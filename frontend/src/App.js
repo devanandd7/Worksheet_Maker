@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import { ProfileSetup, Dashboard, UploadSample, StructurePreview, GenerateWorksheet, WorksheetPreview, Download, History } from './pages/index';
 
+import Navbar from './components/Navbar';
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
@@ -20,7 +22,14 @@ const ProtectedRoute = ({ children }) => {
         );
     }
 
-    return isAuthenticated ? children : <Navigate to="/login" />;
+    return isAuthenticated ? (
+        <>
+            <Navbar />
+            <main className="main-content">
+                {children}
+            </main>
+        </>
+    ) : <Navigate to="/login" />;
 };
 
 function App() {

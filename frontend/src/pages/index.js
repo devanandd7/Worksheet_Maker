@@ -2,7 +2,9 @@
 import React from 'react';
 
 // Export all basic pages
-export { ProfileSetup, Dashboard, History } from './BasicPages';
+export { ProfileSetup } from './BasicPages';
+export { default as Dashboard } from './Dashboard';
+export { default as History } from './History';
 
 // Export functional pages
 export { default as UploadSample } from './UploadSample';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useWorksheet } from '../context/WorksheetContext';
 import { toast } from 'react-toastify';
 import {
@@ -8,11 +8,13 @@ import {
     Loader,
     FileText,
     CheckCircle,
-    RefreshCw
+    RefreshCw,
+    ArrowLeft
 } from 'lucide-react';
 import api from '../services/api';
 
 const WorksheetPreview = () => {
+    const { id } = useParams();
     const { currentWorksheet, setCurrentWorksheet } = useWorksheet();
     const navigate = useNavigate();
 
@@ -21,22 +23,45 @@ const WorksheetPreview = () => {
     const [editedContent, setEditedContent] = useState({});
     const [saving, setSaving] = useState(false);
     const [generatingPDF, setGeneratingPDF] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     const [autoGenTriggered, setAutoGenTriggered] = useState(false);
 
     useEffect(() => {
-        if (!currentWorksheet) {
-            toast.error('No worksheet found. Please generate one first.');
-            navigate('/generate');
-            return;
-        }
-        setWorksheet(currentWorksheet);
-        setEditedContent(currentWorksheet.content || {});
-    }, [currentWorksheet, navigate]);
+        const loadWorksheet = async () => {
+            // Case 1: Worksheet is already in context and matches URL ID
+            if (currentWorksheet && currentWorksheet._id === id) {
+                setWorksheet(currentWorksheet);
+                setEditedContent(currentWorksheet.content || {});
+                setLoading(false);
+                return;
+            }
 
-    // Auto-trigger PDF generation if missing
+            // Case 2: Fetch from API (Refresh or direct link)
+            try {
+                setLoading(true);
+                const response = await api.getWorksheetById(id);
+                const fetchedWorksheet = response.data.worksheet;
+
+                setWorksheet(fetchedWorksheet);
+                setCurrentWorksheet(fetchedWorksheet); // Update context
+                setEditedContent(fetchedWorksheet.content || {});
+            } catch (error) {
+                console.error('Failed to load worksheet:', error);
+                toast.error('Failed to load worksheet. Redirecting...');
+                navigate('/dashboard');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadWorksheet();
+    }, [id, currentWorksheet, navigate, setCurrentWorksheet]);
+
+    // Handle auto-gen only after worksheet is loaded
     useEffect(() => {
-        if (worksheet && worksheet._id && !worksheet.pdfUrl && !generatingPDF && !autoGenTriggered) {
+        if (!loading && worksheet && worksheet._id && !worksheet.pdfUrl && !generatingPDF && !autoGenTriggered) {
+            // ... (rest of logic)
             console.log('Auto-triggering PDF generation for:', worksheet._id);
             setAutoGenTriggered(true);
             handleGeneratePDF();
@@ -197,10 +222,10 @@ const WorksheetPreview = () => {
         }
     };
 
-    if (!worksheet) {
+    if (loading || !worksheet) {
         return (
-            <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <Loader size={48} className="spinner" style={{ color: 'var(--primary)' }} />
+            <div className="flex justify-center items-center min-h-screen">
+                <Loader size={48} className="spinner text-primary" />
             </div>
         );
     }
@@ -308,169 +333,178 @@ const WorksheetPreview = () => {
         <div style={{ padding: '2rem', minHeight: '100vh', background: 'var(--bg-secondary)' }}>
             <div className="container" style={{ maxWidth: '1000px' }}>
                 {/* Header */}
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center mb-6">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="mr-3 p-2 rounded-full hover:bg-gray-200 transition text-gray-600"
+                        title="Go Back"
+                    >
+                        <ArrowLeft size={24} />
+                    </button>
                     <div>
-                        <h1 className="mb-1">{worksheet.topic}</h1>
+                        <h1 className="mb-1 text-2xl font-bold">{worksheet.topic}</h1>
                         <p style={{ color: 'var(--text-secondary)' }}>
                             {worksheet.subject} • Version {worksheet.version}
                         </p>
                     </div>
-                    <div className="flex gap-2">
-                        {worksheet.pdfUrl ? (
-                            <>
-                                <a
-                                    href={worksheet.pdfUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="btn btn-primary"
-                                    download
-                                >
-                                    <DownloadIcon size={20} />
-                                    Download PDF
-                                </a>
-                                <button
-                                    onClick={handleGeneratePDF}
-                                    disabled={generatingPDF}
-                                    className="btn btn-secondary"
-                                >
-                                    <RefreshCw size={20} />
-                                    Regenerate PDF
-                                </button>
-                            </>
-                        ) : (
-                            <button
-                                onClick={handleGeneratePDF}
-                                disabled={generatingPDF}
-                                className="btn btn-primary"
-                            >
-                                {generatingPDF ? (
-                                    <>
-                                        <Loader size={20} className="spinner" />
-                                        Generating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <DownloadIcon size={20} />
-                                        Generate PDF
-                                    </>
-                                )}
-                            </button>
-                        )}
-                    </div>
                 </div>
 
-                {/* Sections */}
-                {sections.map(({ key, label }) => (
-                    worksheet.content[key] && (
-                        <div key={key} className="card mb-3">
-                            <div className="flex justify-between items-start mb-2">
-                                <h3>{label}</h3>
-                                <div className="flex gap-1">
-                                    {!editMode[key] ? (
-                                        <>
-                                            <button
-                                                onClick={() => handleEdit(key)}
-                                                className="btn btn-secondary btn-sm"
-                                            >
-                                                <Edit3 size={16} />
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleRegenerateSection(key)}
-                                                className="btn btn-outline btn-sm"
-                                            >
-                                                <RefreshCw size={16} />
-                                                Regenerate
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <button
-                                                onClick={() => handleSave(key)}
-                                                disabled={saving}
-                                                className="btn btn-primary btn-sm"
-                                            >
-                                                <CheckCircle size={16} />
-                                                Save
-                                            </button>
-                                            <button
-                                                onClick={() => handleCancel(key)}
-                                                className="btn btn-secondary btn-sm"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-
-                            {editMode[key] ? (
-                                renderEditInput(key)
-                            ) : (
-                                renderViewContent(key)
-                            )}
-                        </div>
-                    )
-                ))}
-
-                {/* Images Section */}
-                {worksheet.images && worksheet.images.length > 0 && (
-                    <div className="card mb-3">
-                        <h3 className="mb-2">Attached Images</h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                            {worksheet.images.map((img, idx) => (
-                                <div key={idx} className="card" style={{ padding: '0.5rem' }}>
-                                    <img
-                                        src={img.url}
-                                        alt={img.caption || `Image ${idx + 1}`}
-                                        style={{ width: '100%', borderRadius: 'var(--radius-sm)', marginBottom: '0.5rem' }}
-                                    />
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                        {img.section} - {img.caption}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="card" style={{ background: 'var(--bg-primary)' }}>
-                    <div className="flex gap-2 justify-between">
-                        <button onClick={() => navigate('/history')} className="btn btn-secondary">
-                            <FileText size={20} />
-                            View All Worksheets
-                        </button>
-                        {worksheet.pdfUrl ? (
+                <div className="flex justify-end gap-2 mb-4">
+                    {worksheet.pdfUrl ? (
+                        <>
                             <a
                                 href={worksheet.pdfUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="btn btn-primary btn-lg"
+                                className="btn btn-primary"
                                 download
                             >
                                 <DownloadIcon size={20} />
                                 Download PDF
                             </a>
-                        ) : (
-                            <button onClick={handleGeneratePDF} disabled={generatingPDF} className="btn btn-primary btn-lg">
-                                {generatingPDF ? (
+                            <button
+                                onClick={handleGeneratePDF}
+                                disabled={generatingPDF}
+                                className="btn btn-secondary"
+                            >
+                                <RefreshCw size={20} />
+                                Regenerate PDF
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            onClick={handleGeneratePDF}
+                            disabled={generatingPDF}
+                            className="btn btn-primary"
+                        >
+                            {generatingPDF ? (
+                                <>
+                                    <Loader size={20} className="spinner" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <DownloadIcon size={20} />
+                                    Generate PDF
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Sections */}
+            {sections.map(({ key, label }) => (
+                worksheet.content[key] && (
+                    <div key={key} className="card mb-3">
+                        <div className="flex justify-between items-start mb-2">
+                            <h3>{label}</h3>
+                            <div className="flex gap-1">
+                                {!editMode[key] ? (
                                     <>
-                                        <Loader size={20} className="spinner" />
-                                        Generating PDF...
+                                        <button
+                                            onClick={() => handleEdit(key)}
+                                            className="btn btn-secondary btn-sm"
+                                        >
+                                            <Edit3 size={16} />
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleRegenerateSection(key)}
+                                            className="btn btn-outline btn-sm"
+                                        >
+                                            <RefreshCw size={16} />
+                                            Regenerate
+                                        </button>
                                     </>
                                 ) : (
                                     <>
-                                        <DownloadIcon size={20} />
-                                        Generate PDF
+                                        <button
+                                            onClick={() => handleSave(key)}
+                                            disabled={saving}
+                                            className="btn btn-primary btn-sm"
+                                        >
+                                            <CheckCircle size={16} />
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={() => handleCancel(key)}
+                                            className="btn btn-secondary btn-sm"
+                                        >
+                                            Cancel
+                                        </button>
                                     </>
                                 )}
-                            </button>
+                            </div>
+                        </div>
+
+                        {editMode[key] ? (
+                            renderEditInput(key)
+                        ) : (
+                            renderViewContent(key)
                         )}
                     </div>
+                )
+            ))}
+
+            {/* Images Section */}
+            {worksheet.images && worksheet.images.length > 0 && (
+                <div className="card mb-3">
+                    <h3 className="mb-2">Attached Images</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                        {worksheet.images.map((img, idx) => (
+                            <div key={idx} className="card" style={{ padding: '0.5rem' }}>
+                                <img
+                                    src={img.url}
+                                    alt={img.caption || `Image ${idx + 1}`}
+                                    style={{ width: '100%', borderRadius: 'var(--radius-sm)', marginBottom: '0.5rem' }}
+                                />
+                                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    {img.section} - {img.caption}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="card" style={{ background: 'var(--bg-primary)' }}>
+                <div className="flex gap-2 justify-between">
+                    <button onClick={() => navigate('/history')} className="btn btn-secondary">
+                        <FileText size={20} />
+                        View All Worksheets
+                    </button>
+                    {worksheet.pdfUrl ? (
+                        <a
+                            href={worksheet.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-primary btn-lg"
+                            download
+                        >
+                            <DownloadIcon size={20} />
+                            Download PDF
+                        </a>
+                    ) : (
+                        <button onClick={handleGeneratePDF} disabled={generatingPDF} className="btn btn-primary btn-lg">
+                            {generatingPDF ? (
+                                <>
+                                    <Loader size={20} className="spinner" />
+                                    Generating PDF...
+                                </>
+                            ) : (
+                                <>
+                                    <DownloadIcon size={20} />
+                                    Generate PDF
+                                </>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
-        </div >
+        </div>
+
     );
 };
 
