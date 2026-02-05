@@ -17,7 +17,7 @@ const router = express.Router();
  * @desc    Generate a new worksheet
  * @access  Private
  */
-router.post('/generate', auth, upload.array('images', 5), async (req, res) => {
+router.post('/generate', auth, upload.fields([{ name: 'images', maxCount: 5 }, { name: 'headerImage', maxCount: 1 }]), async (req, res) => {
     try {
         const {
             topic,
@@ -29,7 +29,8 @@ router.post('/generate', auth, upload.array('images', 5), async (req, res) => {
             experimentNumber
         } = req.body;
 
-        const files = req.files || [];
+        const files = req.files['images'] || [];
+        const headerImageFile = req.files['headerImage'] ? req.files['headerImage'][0] : null;
 
         // Validate required fields
         if (!topic || !syllabus || !templateId) {
@@ -87,9 +88,9 @@ router.post('/generate', auth, upload.array('images', 5), async (req, res) => {
             }
         }));
 
-        // 2. Upload Images to Cloudinary (for PDF/Storage)
-        // We do this in parallel to save time
-        console.log(`Processing ${files.length} images...`);
+
+        // 2. Upload Context Images to Cloudinary
+        console.log(`Processing ${files.length} context images...`);
         const uploadPromises = files.map(file =>
             cloudinaryService.uploadImage(file.buffer, req.userId, 'temp_gen').catch(err => {
                 console.error('Image upload failed:', err);
@@ -98,12 +99,25 @@ router.post('/generate', auth, upload.array('images', 5), async (req, res) => {
         );
         const uploadedImages = (await Promise.all(uploadPromises)).filter(img => img !== null);
 
+        // 3. Upload Header Image (if exists)
+        let headerImageUrl = null;
+        if (headerImageFile) {
+            try {
+                console.log('Processing Header Image...');
+                const headerUpload = await cloudinaryService.uploadImage(headerImageFile.buffer, req.userId, 'headers');
+                headerImageUrl = headerUpload.url;
+            } catch (err) {
+                console.error('Header image upload failed:', err);
+                // Continue without header image if upload fails
+            }
+        }
+
         // Generate variation seed for uniqueness
         const variationSeed = `${req.userId}_${Date.now()}_${Math.random()}`;
 
         console.log('Generating worksheet with AI...');
 
-        // 3. Generate content with AI
+        // 4. Generate content with AI
         const generatedContent = await geminiService.generateWorksheetContent({
             topic,
             syllabus,
@@ -123,7 +137,7 @@ router.post('/generate', auth, upload.array('images', 5), async (req, res) => {
             },
             additionalInstructions: additionalInstructions || '',
             variationSeed,
-            images: imageParts // Pass images to Gemini
+            images: imageParts // Pass ONLY context images to Gemini
         });
 
         // ✅ PROCESS MULTI-PART QUESTIONS
@@ -180,6 +194,7 @@ router.post('/generate', auth, upload.array('images', 5), async (req, res) => {
             subject: subject || user.defaultSubject || template.subject,
             syllabus,
             difficulty: difficulty || 'medium',
+            headerImageUrl, // Save header URL
             content: {
                 // ✅ NEW FIELDS
                 mainQuestionTitle: generatedContent.mainQuestionTitle || '',

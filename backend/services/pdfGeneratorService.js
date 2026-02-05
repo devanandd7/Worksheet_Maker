@@ -81,59 +81,70 @@ class PDFGeneratorService {
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 20px;
-      border: 2px solid #000;
+      margin-bottom: 25px;
+      border: none; /* Removed border */
     }
     
     .header-table td {
-      border: 1px solid #000;
-      padding: 8px;
+      border: none; /* Removed border */
+      padding: 6px 8px; /* Slightly reduced padding for tighter vertical rhythm if needed, or keep generous */
       font-size: 11pt;
+      vertical-align: top;
     }
     
     .header-label {
       font-weight: bold;
-      width: 30%;
+      width: 25%; /* Adjusted width */
+      color: #333;
+    }
+
+    .header-value {
+      width: 25%;
+      border-bottom: 1px solid #eee !important; /* Subtle underline for written content look, optional */
     }
     
     .title {
       text-align: center;
-      font-size: 16pt;
+      font-size: 18pt;
       font-weight: bold;
-      margin-bottom: 20px;
-      text-decoration: underline;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
-    
     .section {
-      margin-bottom: 20px;
+      margin-bottom: 25px;
       page-break-inside: avoid;
     }
     
     .section-heading {
       font-weight: bold;
       font-size: 13pt;
-      margin-bottom: 10px;
-      text-decoration: underline;
+      margin-bottom: 12px;
+      text-decoration: none; /* Removed underline per "modern" request, or keep? specific request was header table. Let's keep typical section styles but clean up */
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+      color: #222;
     }
     
     .section-content {
-      margin-left: 20px;
+      margin-left: 10px; /* Reduced indent for cleaner look */
       text-align: justify;
     }
     
     .code-block {
-      background-color: #f5f5f5;
-      border: 1px solid #ddd;
+      background-color: #f8f9fa;
+      border: 1px solid #eee;
       padding: 15px;
       font-family: 'Courier New', monospace;
       font-size: 10pt;
       white-space: pre-wrap;
       margin: 10px 0;
       line-height: 1.4;
+      border-radius: 4px;
     }
     
     .objective-list, .outcome-list {
-      margin-left: 40px;
+      margin-left: 30px;
     }
     
     .objective-list li, .outcome-list li {
@@ -142,22 +153,22 @@ class PDFGeneratorService {
     
     .image-container {
       text-align: center;
-      margin: 15px 0;
+      margin: 20px 0;
       page-break-inside: avoid;
     }
     
     .image-container img {
       max-width: 90%;
       height: auto;
-      border: 1px solid #ccc;
-      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+      border: 1px solid #eee;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Softer shadow */
     }
     
     .image-caption {
       font-style: italic;
       font-size: 10pt;
       margin-top: 8px;
-      color: #333;
+      color: #555;
     }
 
     /* Enhanced Formatting for AI Content */
@@ -191,6 +202,23 @@ class PDFGeneratorService {
       background-color: #f2f2f2;
       font-weight: bold;
     }
+    
+    /* Remove borders from the header table specifically again to be safe if generic table style overrides */
+    .header-table, .header-table td {
+        border: none !important;
+    }
+
+    /* Header Image Styling */
+    .header-image-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .header-image-container img {
+      max-width: 100%;
+      height: auto;
+      max-height: 120px; /* Limit height to prevent taking up too much space */
+    }
 
     @media print {
       body {
@@ -201,31 +229,38 @@ class PDFGeneratorService {
   </style>
 </head>
 <body>
+
+  <!-- Header Image (University/College Logo) -->
+  ${worksheet.headerImageUrl ? `
+  <div class="header-image-container">
+    <img src="${worksheet.headerImageUrl}" alt="University Header" />
+  </div>` : ''}
+
   <!-- Header Table -->
   <table class="header-table">
     <tr>
       <td class="header-label">Experiment No:</td>
-      <td>${worksheet.experimentNumber || 'N/A'}</td>
-      <td class="header-label">Date of Performance:</td>
-      <td>${new Date(worksheet.dateOfPerformance).toLocaleDateString('en-IN')}</td>
+      <td class="header-value">${this.cleanValue(worksheet.experimentNumber)}</td>
+      <td class="header-label">Date:</td>
+      <td class="header-value">${worksheet.dateOfPerformance ? new Date(worksheet.dateOfPerformance).toLocaleDateString('en-IN') : ''}</td>
     </tr>
     <tr>
       <td class="header-label">Student Name:</td>
-      <td>${user.name}</td>
+      <td class="header-value">${this.cleanValue(user.name)}</td>
       <td class="header-label">UID:</td>
-      <td>${user.uid || 'N/A'}</td>
+      <td class="header-value">${this.cleanValue(user.uid)}</td>
     </tr>
     <tr>
       <td class="header-label">Branch:</td>
-      <td>${user.branch || user.course}</td>
+      <td class="header-value">${this.cleanValue(user.branch || user.course)}</td>
       <td class="header-label">Section/Group:</td>
-      <td>${user.section || 'N/A'}</td>
+      <td class="header-value">${this.cleanValue(user.section)}</td>
     </tr>
     <tr>
       <td class="header-label">Semester:</td>
-      <td>${user.semester}</td>
-      <td class="header-label">Subject Name:</td>
-      <td>${user.defaultSubject || 'N/A'}</td>
+      <td class="header-value">${this.cleanValue(user.semester)}</td>
+      <td class="header-label">Subject:</td>
+      <td class="header-value">${this.cleanValue(user.defaultSubject)}</td>
     </tr>
   </table>
 
@@ -354,6 +389,13 @@ class PDFGeneratorService {
       ${outcomes.map(outcome => `<li>${outcome}</li>`).join('\n      ')}
     </ul>
   </div>`;
+  }
+
+  cleanValue(val) {
+    if (!val) return '';
+    const strVal = String(val).trim();
+    if (strVal.toUpperCase() === 'N/A' || strVal.toUpperCase() === 'NA') return '';
+    return strVal;
   }
 
   escapeHtml(text) {

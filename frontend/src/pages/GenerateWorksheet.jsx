@@ -25,6 +25,7 @@ const GenerateWorksheet = () => {
     const [generating, setGenerating] = useState(false);
     const [loadingTemplates, setLoadingTemplates] = useState(true);
     const [uploadedImages, setUploadedImages] = useState([]);
+    const [headerImage, setHeaderImage] = useState(null);
 
     const fetchTemplateSuggestions = useCallback(async () => {
         try {
@@ -79,11 +80,38 @@ const GenerateWorksheet = () => {
         });
     };
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    const { getRootProps: getRootProps, getInputProps: getInputProps, isDragActive: isDragActive } = useDropzone({
         onDrop,
         accept: {
             'image/*': ['.jpeg', '.jpg', '.png', '.webp']
         },
+        maxSize: 5 * 1024 * 1024, // 5MB
+        disabled: generating
+    });
+
+    const onDropHeader = useCallback((acceptedFiles) => {
+        if (acceptedFiles.length > 0) {
+            const file = acceptedFiles[0];
+            Object.assign(file, {
+                preview: URL.createObjectURL(file)
+            });
+            setHeaderImage(file);
+        }
+    }, []);
+
+    const removeHeaderImage = () => {
+        if (headerImage) {
+            URL.revokeObjectURL(headerImage.preview);
+            setHeaderImage(null);
+        }
+    };
+
+    const { getRootProps: getHeaderRootProps, getInputProps: getHeaderInputProps, isDragActive: isHeaderDragActive } = useDropzone({
+        onDrop: onDropHeader,
+        accept: {
+            'image/*': ['.jpeg', '.jpg', '.png', '.webp']
+        },
+        maxFiles: 1,
         maxSize: 5 * 1024 * 1024, // 5MB
         disabled: generating
     });
@@ -114,6 +142,11 @@ const GenerateWorksheet = () => {
                 data.append('templateId', selectedTemplate._id);
             }
             data.append('additionalInstructions', formData.additionalInstructions);
+
+            // Append Header Image
+            if (headerImage) {
+                data.append('headerImage', headerImage);
+            }
 
             // Append images
             uploadedImages.forEach((file) => {
@@ -295,6 +328,73 @@ const GenerateWorksheet = () => {
                                 <option value="medium">Medium - Intermediate complexity</option>
                                 <option value="hard">Hard - Advanced topics and complex problems</option>
                             </select>
+                        </div>
+
+                        {/* Header Image Upload (NEW) */}
+                        <div className="input-group">
+                            <label className="input-label">
+                                University/College Header Image (Optional)
+                            </label>
+                            <div
+                                {...getHeaderRootProps()}
+                                style={{
+                                    border: '2px dashed var(--border)',
+                                    borderRadius: '8px',
+                                    padding: '20px',
+                                    textAlign: 'center',
+                                    cursor: 'pointer',
+                                    background: isHeaderDragActive ? 'var(--primary-light)' : 'var(--bg-primary)',
+                                    transition: 'border .24s ease-in-out',
+                                    marginBottom: '10px'
+                                }}
+                            >
+                                <input {...getHeaderInputProps()} />
+                                <ImageIcon size={32} style={{ color: 'var(--text-secondary)', marginBottom: '8px' }} />
+                                {isHeaderDragActive ? (
+                                    <p style={{ color: 'var(--primary)' }}>Drop header image here...</p>
+                                ) : (
+                                    <p style={{ color: 'var(--text-secondary)' }}>
+                                        Drag & drop University/College Logo here (Max 1 image)
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Header Image Preview */}
+                            {headerImage && (
+                                <div style={{ position: 'relative', width: '200px', height: '60px', marginTop: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px' }}>
+                                    <img
+                                        src={headerImage.preview}
+                                        alt="Header Preview"
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={removeHeaderImage}
+                                        style={{
+                                            position: 'absolute',
+                                            top: '-10px',
+                                            right: '-10px',
+                                            background: 'var(--error)',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: '50%',
+                                            width: '24px',
+                                            height: '24px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                        }}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            )}
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                                This image will appear at the very top of your worksheet PDF.
+                            </p>
                         </div>
 
                         {/* Image Upload for Context (NEW) */}

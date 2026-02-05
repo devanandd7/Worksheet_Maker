@@ -29,6 +29,7 @@ const worksheetSchema = new mongoose.Schema({
         enum: ['easy', 'medium', 'hard', 'Easy', 'Medium', 'Hard'],
         default: 'medium'
     },
+    headerImageUrl: { type: String }, // URL for University/College Header Image
     content: {
         // ✅ NEW: For multi-part questions
         mainQuestionTitle: { type: String, default: '' },
