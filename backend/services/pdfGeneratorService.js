@@ -156,7 +156,39 @@ class PDFGeneratorService {
       font-size: 10pt;
       margin-top: 5px;
     }
+
+    /* Enhanced Formatting for AI Content */
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+    b, strong {
+      font-weight: bold;
+    }
+    p {
+      margin-bottom: 10px;
+    }
     
+    /* Table Styling */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      font-size: 11pt;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+
     @media print {
       body {
         -webkit-print-color-adjust: exact;

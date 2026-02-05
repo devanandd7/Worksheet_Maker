@@ -260,15 +260,16 @@ ${userMemory?.commonMistakes?.length > 0 ? userMemory.commonMistakes.map(m => `-
 ====================
 OUTPUT FORMAT
 ====================
-Return ONLY this JSON structure (no markdown formatting, no backticks):
+Return ONLY this JSON structure (no markdown formatting, no backticks).
+IMPORTANT: Use HTML tags for formatting inside the JSON strings (<ul>, <li>, <table>, <b>, <br>).
 
 {
-  "aim": "detailed aim text here",
-  "problemStatement": "problem description here",
-  "dataset": "dataset information here (if applicable)",
+  "aim": "detailed aim text here (use HTML: <ul> for lists, <b> for bold)",
+  "problemStatement": "problem description (use HTML)",
+  "dataset": "dataset information (use HTML table if apt)",
   "objective": ["objective 1", "objective 2", "objective 3"],
-  "code": "complete working code here with comments",
-  "output": "expected output description and sample output",
+  "code": "complete working code here (no HTML tags, just raw code)",
+  "output": "expected output description (use HTML)",
   "learningOutcome": ["learning point 1", "learning point 2", "learning point 3"]
 }
 
