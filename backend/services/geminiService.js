@@ -229,13 +229,54 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
     }
 
     /**
+     * Get dynamic length instructions based on image count
+     * @param {number} count - Number of images
+     * @returns {String} - Prompt instruction
+     */
+    _getDynamicLengthInstructions(count) {
+        if (count >= 4) {
+            return `
+═══════════════════════════════════════════════════════════════
+📏 DYNAMIC CONTENT SCALING: EXTENSIVE (Goal: ~10 Pages)
+═══════════════════════════════════════════════════════════════
+Requirement: User provided ${count} images. You MUST generate a HIGHLY DETAILED, EXTENSIVE worksheet.
+- Aim for approximately 10 PDF pages of content.
+- EXPAND every section with deep theoretical background, multiple code examples, and detailed analysis.
+- The "Theory" or "Problem Statement" section must be at least 800 words.
+- The "Code" section must include full implementation details, edge cases, and alternative approaches.
+- The "Conclusion" must be a comprehensive summary (min 300 words).
+`;
+        } else if (count >= 2) {
+            return `
+═══════════════════════════════════════════════════════════════
+📏 DYNAMIC CONTENT SCALING: MODERATE (Goal: ~6 Pages)
+═══════════════════════════════════════════════════════════════
+Requirement: User provided ${count} images. Generate a MODERATE length worksheet.
+- Aim for approximately 6 PDF pages of content.
+- Provide clear, concise explanations but ensure full coverage of the topic.
+- The "Theory" or "Problem Statement" should be ~400-500 words.
+- The "Code" section should focus on the core implementation.
+`;
+        } else {
+            return `
+═══════════════════════════════════════════════════════════════
+📏 DYNAMIC CONTENT SCALING: STANDARD (Goal: ~3-4 Pages)
+═══════════════════════════════════════════════════════════════
+Requirement: Standard worksheet length. Focus on clarity and precision.
+`;
+        }
+    }
+
+    /**
      * Build comprehensive prompt for worksheet generation
      * @param {Object} params - Prompt parameters
      * @returns {String} - Complete prompt
      */
-    buildWorksheetPrompt(params) {
-        const { topic, syllabus, difficulty, sections, userContext, userMemory, variationSeed, imageData } = params;
-
+    buildWorksheetPrompt({
+        topic, syllabus, difficulty, sections,
+        userContext, userMemory, variationSeed,
+        imageData, imageCount, additionalInstructions // Added additionalInstructions
+    }) {
         return `You are an ELITE ACADEMIC WORKSHEET GENERATOR for ${userContext.university}.
 
 Your mission: Generate PUBLICATION-READY academic worksheets with professional formatting, intelligent structure, and domain-adaptive content.
@@ -246,6 +287,12 @@ Your mission: Generate PUBLICATION-READY academic worksheets with professional f
 Institution: ${userContext.university}
 Course: ${userContext.course} | Semester: ${userContext.semester}
 Subject: ${userContext.subject}
+
+${this._getDynamicLengthInstructions(imageCount)}
+
+═══════════════════════════════════════════════════════════════
+🎯 TASK OVERVIEW
+═══════════════════════════════════════════════════════════════
 Topic: ${topic}
 Difficulty: ${difficulty}
 Syllabus Alignment: ${syllabus}
@@ -406,7 +453,12 @@ ANALYSIS CHECKLIST:
      "output": [1]          // Image 1 -> output section
    }
 
-CRITICAL: Analyze each image thoroughly. Do NOT dump all images in one section. Distribute them where they contextually belong.
+CRITICAL: YOU HAVE RECEIVED ${imageCount} IMAGES (Indices 0 to ${imageCount - 1}).
+YOU MUST USE ALL ${imageCount} IMAGES.
+Map EVERY single image index (0 to ${imageCount - 1}) to a section.
+If an image doesn't fit perfectly, place it in "aim" or "problemStatement" or "additionalNotes".
+DO NOT LEAVE ANY IMAGE UNUSED.
+CRITICAL: Do NOT dump all images in one section. Distribute them where they contextually belong.
 ☐ Extract any tables/datasets visible
 ☐ Note any diagrams/flowcharts
 ☐ Check for code snippets or formulas

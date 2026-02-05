@@ -100,7 +100,9 @@ class PDFGeneratorService {
 
     .header-value {
       width: 25%;
-      border-bottom: 1px solid #eee !important; /* Subtle underline for written content look, optional */
+      border-bottom: 1px solid #eee !important;
+      font-weight: 700; /* Bold */
+      color: #000000;   /* Dark Black */
     }
     
     .title {
