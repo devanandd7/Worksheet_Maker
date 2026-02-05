@@ -56,7 +56,13 @@ export const templateAPI = {
 
 // Worksheet APIs
 export const worksheetAPI = {
-    generate: (data) => api.post('/worksheets/generate', data),
+    generate: (data) => {
+        // Check if data is FormData to set correct headers
+        const isFormData = data instanceof FormData;
+        return api.post('/worksheets/generate', data, {
+            headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {}
+        });
+    },
     uploadImage: (worksheetId, formData) => api.post(`/worksheets/${worksheetId}/upload-image`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),

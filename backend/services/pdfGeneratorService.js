@@ -55,6 +55,7 @@ class PDFGeneratorService {
    */
   generateHTML(worksheet, user) {
     const currentDate = new Date().toLocaleDateString('en-IN');
+    const images = worksheet.images || [];
 
     return `
 <!DOCTYPE html>
@@ -146,15 +147,17 @@ class PDFGeneratorService {
     }
     
     .image-container img {
-      max-width: 100%;
+      max-width: 90%;
       height: auto;
       border: 1px solid #ccc;
+      box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
     }
     
     .image-caption {
       font-style: italic;
       font-size: 10pt;
-      margin-top: 5px;
+      margin-top: 8px;
+      color: #333;
     }
 
     /* Enhanced Formatting for AI Content */
@@ -229,13 +232,13 @@ class PDFGeneratorService {
   <!-- Title (Only show if no structured, formatted question title exists) -->
   ${!worksheet.content.questionTitle ? `<div class="title">${worksheet.topic}</div>` : ''}
 
-  ${this.renderSection('Main Question', worksheet.content.questionTitle)}
-  ${this.renderSection('Aim / Overview of the Practical', worksheet.content.aim)}
-  ${this.renderSection('Problem Statement', worksheet.content.problemStatement)}
-  ${this.renderSection('Dataset', worksheet.content.dataset)}
+  ${this.renderSection('Main Question', worksheet.content.questionTitle, images, 'mainQuestion')}
+  ${this.renderSection('Aim / Overview of the Practical', worksheet.content.aim, images, 'aim')}
+  ${this.renderSection('Problem Statement', worksheet.content.problemStatement, images, 'problemStatement')}
+  ${this.renderSection('Dataset', worksheet.content.dataset, images, 'dataset')}
   ${this.renderObjectives(worksheet.content.objective)}
-  ${this.renderCode(worksheet.content.code)}
-  ${this.renderOutput(worksheet.content.output, worksheet.images)}
+  ${this.renderCode(worksheet.content.code, images)}
+  ${this.renderOutput(worksheet.content.output, images)}
   ${this.renderLearningOutcomes(worksheet.content.learningOutcome)}
 
 </body>
@@ -243,12 +246,36 @@ class PDFGeneratorService {
     `.trim();
   }
 
-  renderSection(heading, content) {
+  // Helper to render images for a specific section
+  renderImagesForSection(images, sectionName) {
+    if (!images || !sectionName) return '';
+
+    // Normalize section name for comparison (case-insensitive)
+    const normalizedSection = sectionName.toLowerCase();
+
+    const sectionImages = images.filter(img =>
+      (img.section && img.section.toLowerCase() === normalizedSection) ||
+      // Fallback for 'output' if mapped to 'result' or vice versa
+      (normalizedSection === 'output' && img.section.toLowerCase() === 'result') ||
+      (normalizedSection === 'aim' && img.section.toLowerCase() === 'overview')
+    );
+
+    if (sectionImages.length === 0) return '';
+
+    return sectionImages.map(img => `
+    <div class="image-container">
+      <img src="${img.url}" alt="${img.caption || 'Section Image'}" />
+      <div class="image-caption">${img.caption || `Figure: ${sectionName} Image`}</div>
+    </div>`).join('');
+  }
+
+  renderSection(heading, content, images = [], sectionKey = '') {
     if (!content) return '';
     return `
   <div class="section">
     <div class="section-heading">${heading}</div>
     <div class="section-content">${content}</div>
+    ${this.renderImagesForSection(images, sectionKey)}
   </div>`;
   }
 
@@ -263,7 +290,7 @@ class PDFGeneratorService {
   </div>`;
   }
 
-  renderCode(code) {
+  renderCode(code, images = []) {
     if (!code) return '';
 
     let codeSource = code;
@@ -288,6 +315,9 @@ class PDFGeneratorService {
     <pre class="code-block">${this.escapeHtml(codeSource)}</pre>`;
     }
 
+    // Render images assigned to 'code' section
+    html += this.renderImagesForSection(images, 'code');
+
     if (codeExplanation) {
       html += `
     <div class="section-content" style="margin-top: 10px; font-style: italic;">
@@ -301,23 +331,14 @@ class PDFGeneratorService {
     return html;
   }
 
-  renderOutput(output, images) {
+  renderOutput(output, images = []) {
     let html = `
   <div class="section">
     <div class="section-heading">Output</div>
     <div class="section-content">${output || 'No output description provided'}</div>`;
 
-    // Add images if present in Output section
-    const outputImages = images?.filter(img => img.section === 'Output') || [];
-    if (outputImages.length > 0) {
-      outputImages.forEach(img => {
-        html += `
-    <div class="image-container">
-      <img src="${img.url}" alt="${img.caption || 'Output image'}" />
-      <div class="image-caption">${img.caption || 'Output Screenshot'}</div>
-    </div>`;
-      });
-    }
+    // Render images assigned to 'output' section
+    html += this.renderImagesForSection(images, 'output');
 
     html += `
   </div>`;
@@ -343,7 +364,7 @@ class PDFGeneratorService {
       '"': '&quot;',
       "'": '&#039;'
     };
-    return text.replace(/[&<>"']/g, m => map[m]);
+    return text.toString().replace(/[&<>"']/g, m => map[m]);
   }
 }
 

@@ -204,14 +204,22 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
             });
 
             const text = response.text;
+            console.log('📝 RAW AI RESPONSE:', text.substring(0, 500) + '...'); // Log first 500 chars
 
             // Extract JSON from response
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (!jsonMatch) {
+                console.error('❌ JSON Extraction Failed. Raw text:', text);
                 throw new Error('AI did not return valid JSON format');
             }
 
             const content = JSON.parse(jsonMatch[0]);
+            console.log('✅ Extracted Content Keys:', Object.keys(content));
+            if (content.imagePlacements) {
+                console.log('🖼️ AI Image Placements:', JSON.stringify(content.imagePlacements, null, 2));
+            } else {
+                console.warn('⚠️ No imagePlacements found in AI response');
+            }
 
             return content;
         } catch (error) {
@@ -378,6 +386,27 @@ ${imageData ? `
 ANALYSIS CHECKLIST:
 ☐ Extract text from image (OCR if screenshot)
 ☐ Identify question parts (a, b, c)
+☐ Determine proper placement ("code", "output", "problemStatement")
+☐ Generate a descriptive caption
+
+3. RETURN IMAGE PLACEMENTS (CRITICAL):
+   In your JSON response, you MUST include an "imagePlacements" object mapping valid section names to image indices.
+   
+   VALID SECTION KEYS: "aim", "problemStatement", "dataset", "algorithm", "code", "output"
+
+   RULES FOR PLACEMENT:
+   - Code Screenshots -> "code"
+   - Output/Terminal/Console Screenshots -> "output" (If multiple outputs, place sequentially)
+   - Hardware/Circuit Diagrams -> "problemStatement" or "aim" or "dataset"
+   - Data Tables/Graphs -> "dataset" or "output"
+   
+   Example:
+   "imagePlacements": {
+     "code": [0],           // Image 0 -> code section
+     "output": [1]          // Image 1 -> output section
+   }
+
+CRITICAL: Analyze each image thoroughly. Do NOT dump all images in one section. Distribute them where they contextually belong.
 ☐ Extract any tables/datasets visible
 ☐ Note any diagrams/flowcharts
 ☐ Check for code snippets or formulas
@@ -395,7 +424,8 @@ OUTPUT IN JSON:
   "detectedParts": ["a", "b"],
   "integrationMethod": "Used as main question parts"
 }
-` : ''}
+` : ''
+            }
 
 ═══════════════════════════════════════════════════════════════
 📝 REQUIRED OUTPUT STRUCTURE
@@ -404,10 +434,10 @@ OUTPUT IN JSON:
 YOU MUST GENERATE: ${sections.map((s, i) => `${i + 1}. ${s}`).join(', ')}
 
 ═══════════════════════════════════════════════════════════════
-🎨 DOMAIN-ADAPTIVE EXAMPLES
+🎨 DOMAIN - ADAPTIVE EXAMPLES
 ═══════════════════════════════════════════════════════════════
 
-EXCEL/DATA ANALYSIS: Include formulas, pivot table steps, slicer instructions
+EXCEL / DATA ANALYSIS: Include formulas, pivot table steps, slicer instructions
 PROGRAMMING: Include complete runnable code with comments
 ENGINEERING: Include calculations, units, diagrams descriptions
 MANAGEMENT: Include case studies, frameworks, decision matrices
@@ -416,12 +446,12 @@ MANAGEMENT: Include case studies, frameworks, decision matrices
 ⚠️ CRITICAL QUALITY RULES
 ═══════════════════════════════════════════════════════════════
 
-✗ NEVER: Put multi-part questions in one line
+✗ NEVER: Put multi - part questions in one line
 ✗ NEVER: Skip section headings
 ✗ NEVER: Use inconsistent indentation
 ✗ NEVER: Ignore uploaded images
 
-✓ ALWAYS: Separate question parts (a, b, c) with proper formatting
+✓ ALWAYS: Separate question parts(a, b, c) with proper formatting
 ✓ ALWAYS: Use consistent heading styles
 ✓ ALWAYS: Apply 20px left margin under each heading
 ✓ ALWAYS: Analyze and integrate uploaded images
@@ -430,71 +460,73 @@ Common Mistakes to Avoid:
 ${userMemory?.commonMistakes?.length > 0 ? userMemory.commonMistakes.map(m => `• ${m}`).join('\n') : '• None recorded yet'}
 
 ═══════════════════════════════════════════════════════════════
-📤 JSON OUTPUT FORMAT (STRICTLY FOLLOW)
+📤 JSON OUTPUT FORMAT(STRICTLY FOLLOW)
 ═══════════════════════════════════════════════════════════════
 
-Return ONLY valid JSON (no markdown, no backticks):
+Return ONLY valid JSON(no markdown, no backticks):
 
 {
-  "mainQuestionTitle": "Primary topic or title extracted from question",
-  
-  "questionParts": [
-    {
-      "part": "a",
-      "title": "Short descriptive title for part a",
-      "description": "Full description of what part a asks"
+    "mainQuestionTitle": "Primary topic or title extracted from question",
+
+        "questionParts": [
+            {
+                "part": "a",
+                "title": "Short descriptive title for part a",
+                "description": "Full description of what part a asks"
+            }
+        ],
+
+            "aim": "<div style='margin-left: 20px; line-height: 1.7;'><p style='margin-bottom: 12px; font-weight: 500;'>[Aim Title]</p><p style='margin-bottom: 12px;'>[Description paragraph]</p><ul style='margin-left: 20px; line-height: 1.8;'><li>Point 1</li><li>Point 2</li></ul></div>",
+
+                "problemStatement": "<div style='margin-left: 20px; line-height: 1.7;'><p style='margin-bottom: 12px;'>[Problem description with context]</p></div>",
+
+                    "dataset": "<div style='margin-left: 20px;'><table style='width: 100%; border-collapse: collapse; margin: 16px 0;'><thead style='background: #f5f5f5;'><tr><th style='padding: 10px; border: 1px solid #ddd; text-align: left;'>Column1</th></tr></thead><tbody><tr><td style='padding: 10px; border: 1px solid #ddd;'>Data</td></tr></tbody></table></div>",
+
+                        "objective": [
+                            "Clear, specific objective 1",
+                            "Clear, specific objective 2"
+                        ],
+
+                            "code": {
+        "language": "excel|python|java|cpp|etc",
+            "source": "Complete code here with proper formatting and comments",
+                "explanation": "<div style='line-height: 1.7;'><p><b>Key Concepts:</b></p><ul style='margin-left: 20px;'><li>Explanation point 1</li><li>Explanation point 2</li></ul></div>"
     },
-    {
-      "part": "b", 
-      "title": "Short descriptive title for part b",
-      "description": "Full description of what part b asks"
-    }
-  ],
-  
-  "aim": "<div style='margin-left: 20px; line-height: 1.7;'><p style='margin-bottom: 12px; font-weight: 500;'>[Aim Title]</p><p style='margin-bottom: 12px;'>[Description paragraph]</p><ul style='margin-left: 20px; line-height: 1.8;'><li>Point 1</li><li>Point 2</li></ul></div>",
-  
-  "problemStatement": "<div style='margin-left: 20px; line-height: 1.7;'><p style='margin-bottom: 12px;'>[Problem description with context]</p></div>",
-  
-  "dataset": "<div style='margin-left: 20px;'><table style='width: 100%; border-collapse: collapse; margin: 16px 0;'><thead style='background: #f5f5f5;'><tr><th style='padding: 10px; border: 1px solid #ddd; text-align: left;'>Column1</th></tr></thead><tbody><tr><td style='padding: 10px; border: 1px solid #ddd;'>Data</td></tr></tbody></table></div>",
-  
-  "objective": [
-    "Clear, specific objective 1",
-    "Clear, specific objective 2", 
-    "Clear, specific objective 3"
-  ],
-  
-  "code": {
-    "language": "excel|python|java|cpp|etc",
-    "source": "Complete code here with proper formatting and comments",
-    "explanation": "<div style='line-height: 1.7;'><p><b>Key Concepts:</b></p><ul style='margin-left: 20px;'><li>Explanation point 1</li><li>Explanation point 2</li></ul></div>"
-  },
-  
-  "output": "<div style='margin-left: 20px; line-height: 1.7;'><h4 style='font-size: 14px; font-weight: 500; margin-bottom: 10px;'>Expected Output</h4><ol style='margin-left: 20px; line-height: 1.8;'><li>Output point 1</li><li>Output point 2</li></ol></div>",
-  
-  "learningOutcome": [
-    "<b>Outcome 1:</b> Detailed skill/knowledge gained",
-    "<b>Outcome 2:</b> Detailed application understanding",
-    "<b>Outcome 3:</b> Detailed competency developed"
-  ],
-  
-  "imageAnalysis": "${imageData ? 'Detailed analysis of uploaded image and how it was integrated' : 'No image provided'}",
-  
-  "additionalNotes": "Any supplementary information or references"
+
+    "output": "<div style='margin-left: 20px; line-height: 1.7;'><h4 style='font-size: 14px; font-weight: 500; margin-bottom: 10px;'>Expected Output</h4><ol style='margin-left: 20px; line-height: 1.8;'><li>Output point 1</li><li>Output point 2</li></ol></div>",
+
+        "learningOutcome": [
+            "<b>Outcome 1:</b> Detailed skill/knowledge gained",
+            "<b>Outcome 2:</b> Detailed application understanding"
+        ],
+
+            "imageAnalysis": "${imageData ? 'Detailed analysis of uploaded image and how it was integrated' : 'No image provided'}",
+
+                "imagePlacements": {
+        "code": [0],
+            "output": [1]
+    },
+    "imageCaptions": [
+        "Figure 1: Caption for image 0",
+        "Figure 2: Caption for image 1"
+    ],
+
+        "additionalNotes": "Any supplementary information or references"
 }
 
 ═══════════════════════════════════════════════════════════════
-🚀 PRE-SUBMISSION CHECKLIST
+🚀 PRE - SUBMISSION CHECKLIST
 ═══════════════════════════════════════════════════════════════
 
 Before returning JSON, verify:
-☑ Multi-part questions (a, b) are properly separated
+☑ Multi - part questions(a, b) are properly separated
 ☑ Each section has a proper heading with underline border
 ☑ All content under headings has 20px left margin
-☑ Image content (if any) is analyzed and integrated
+☑ Image content(if any) is analyzed and integrated
 ☑ Code is properly formatted with language specified
 ☑ JSON is valid and parseable
 ☑ Professional typography applied throughout
-☑ Spacing is consistent (24px between sections)
+☑ Spacing is consistent(24px between sections)
 
 ═══════════════════════════════════════════════════════════════
 
@@ -518,7 +550,7 @@ NOW GENERATE THE WORKSHEET WITH EXCELLENCE AND PRECISION.`;
         try {
             const prompt = `Regenerate ONLY the "${section}" section for this worksheet.
 
-Topic: ${context.topic}
+    Topic: ${context.topic}
 Syllabus: ${context.syllabus}
 
 Current "${section}" content:
@@ -526,11 +558,11 @@ ${currentContent}
 
 Requirements:
 - Make it DIFFERENT from the current version
-- Maintain academic quality
-- Stay within syllabus scope
-- Return ONLY the new content text (not JSON)
+    - Maintain academic quality
+        - Stay within syllabus scope
+            - Return ONLY the new content text(not JSON)
 
-Generate improved "${section}" content:`;
+Generate improved "${section}" content: `;
 
             const response = await this.client.models.generateContent({
                 model: this.modelName,
@@ -545,7 +577,7 @@ Generate improved "${section}" content:`;
             return response.text.trim();
         } catch (error) {
             console.error('Section regeneration error:', error);
-            throw new Error(`Failed to regenerate ${section}: ${error.message}`);
+            throw new Error(`Failed to regenerate ${section}: ${error.message} `);
         }
     }
 }

@@ -14,25 +14,30 @@ const router = express.Router();
 
 /**
  * @route   POST /api/worksheets/generate
- * @desc    Generate new worksheet using AI
+ * @desc    Generate a new worksheet
  * @access  Private
  */
-router.post('/generate', auth, [
-    body('topic').trim().notEmpty().withMessage('Topic is required'),
-    body('syllabus').trim().notEmpty().withMessage('Syllabus is required'),
-    body('difficulty').optional().isIn(['easy', 'medium', 'hard', 'Easy', 'Medium', 'Hard']).withMessage('Invalid difficulty level')
-], async (req, res) => {
+router.post('/generate', auth, upload.array('images', 5), async (req, res) => {
     try {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
+        const {
+            topic,
+            subject,
+            syllabus,
+            difficulty,
+            templateId,
+            additionalInstructions = '',
+            experimentNumber
+        } = req.body;
+
+        const files = req.files || [];
+
+        // Validate required fields
+        if (!topic || !syllabus || !templateId) {
             return res.status(400).json({
                 success: false,
-                message: 'Validation failed',
-                errors: errors.array()
+                message: 'Please provide topic, syllabus and template ID'
             });
         }
-
-        const { topic, syllabus, templateId, difficulty, subject, additionalInstructions, experimentNumber } = req.body;
 
         // Get template or create default
         let template;
@@ -73,12 +78,32 @@ router.post('/generate', auth, [
             await aiMemory.save();
         }
 
+        // 1. Process Images for Gemini (Inline Data)
+        // Convert buffers to base64 for Gemini
+        const imageParts = files.map(file => ({
+            inlineData: {
+                data: file.buffer.toString('base64'),
+                mimeType: file.mimetype
+            }
+        }));
+
+        // 2. Upload Images to Cloudinary (for PDF/Storage)
+        // We do this in parallel to save time
+        console.log(`Processing ${files.length} images...`);
+        const uploadPromises = files.map(file =>
+            cloudinaryService.uploadImage(file.buffer, req.userId, 'temp_gen').catch(err => {
+                console.error('Image upload failed:', err);
+                return null;
+            })
+        );
+        const uploadedImages = (await Promise.all(uploadPromises)).filter(img => img !== null);
+
         // Generate variation seed for uniqueness
         const variationSeed = `${req.userId}_${Date.now()}_${Math.random()}`;
 
         console.log('Generating worksheet with AI...');
 
-        // Generate content with AI
+        // 3. Generate content with AI
         const generatedContent = await geminiService.generateWorksheetContent({
             topic,
             syllabus,
@@ -97,7 +122,8 @@ router.post('/generate', auth, [
                 commonMistakes: aiMemory.commonMistakes
             },
             additionalInstructions: additionalInstructions || '',
-            variationSeed
+            variationSeed,
+            images: imageParts // Pass images to Gemini
         });
 
         // ✅ PROCESS MULTI-PART QUESTIONS
@@ -114,6 +140,37 @@ router.post('/generate', auth, [
               </div>
             </div>`;
         }
+
+        // ✅ PREPARE IMAGES FOR DATABASE (Map Cloudinary URLs to AI Placements)
+        const dbImages = [];
+        const placements = generatedContent.imagePlacements || {};
+        const captions = generatedContent.imageCaptions || [];
+
+        console.log('🖼️ Raw Placements from AI:', placements);
+
+        // Inverted map: Index -> Section(s)
+        const indexToSection = {};
+        Object.entries(placements).forEach(([section, indices]) => {
+            if (Array.isArray(indices)) {
+                indices.forEach(idx => {
+                    indexToSection[idx] = section;
+                });
+            }
+        });
+
+        console.log('🗺️ Index to Section Map:', indexToSection);
+
+        uploadedImages.forEach((img, idx) => {
+            const mappedSection = indexToSection[idx] || 'Additional Resources';
+            console.log(`📌 Mapping Image ${idx}: ${img.url} -> ${mappedSection}`);
+
+            dbImages.push({
+                url: img.url,
+                section: mappedSection, // Default if AI didn't place it
+                caption: captions[idx] || `Figure ${idx + 1}`,
+                uploadedAt: new Date()
+            });
+        });
 
         // Create worksheet document
         const worksheet = new Worksheet({
@@ -134,7 +191,6 @@ router.post('/generate', auth, [
                 dataset: generatedContent.dataset || '',
                 algorithm: generatedContent.algorithm || '',
                 objective: generatedContent.objective || [],
-                objective: generatedContent.objective || [],
                 code: (typeof generatedContent.code === 'string')
                     ? { language: 'plaintext', source: generatedContent.code, explanation: '' }
                     : {
@@ -148,6 +204,7 @@ router.post('/generate', auth, [
                 imageAnalysis: generatedContent.imageAnalysis || null,
                 additionalNotes: generatedContent.additionalNotes || ''
             },
+            images: dbImages, // Save images with AI-determined context
             status: 'generated',
             experimentNumber: experimentNumber || 'N/A',
             dateOfPerformance: new Date()
