@@ -38,12 +38,12 @@ const templateSchema = new mongoose.Schema({
     style: {
         type: String,
         default: 'Formal Academic',
-        enum: ['Formal Academic', 'Practical Oriented', 'Research Focused']
+        enum: ['Formal Academic', 'Practical Oriented', 'Research Focused', 'Practical', 'Academic']
     },
     level: {
         type: String,
         default: 'Post Graduate',
-        enum: ['Under Graduate', 'Post Graduate', 'Research']
+        enum: ['Under Graduate', 'Post Graduate', 'Research', 'Postgraduate', 'Undergraduate', 'Masters', 'PhD']
     },
     createdFromSample: {
         type: Boolean,

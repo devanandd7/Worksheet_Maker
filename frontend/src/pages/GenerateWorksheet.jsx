@@ -84,9 +84,9 @@ const GenerateWorksheet = () => {
             setCurrentWorksheet(response.data.worksheet);
             toast.success('Worksheet generated successfully!');
 
-            // Navigate to preview
+            // Navigate to preview with ID
             setTimeout(() => {
-                navigate('/preview');
+                navigate(`/preview/${response.data.worksheet._id}`);
             }, 1000);
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to generate worksheet');

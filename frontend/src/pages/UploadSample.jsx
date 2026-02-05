@@ -91,7 +91,8 @@ const UploadSample = () => {
                 extractedText: extractedText || uploadedData?.extractedText
             });
 
-            setAnalysisResult(response.data);
+            // Backend returns: { success: true, data: { sections, style, ... } }
+            setAnalysisResult(response.data.data);
             toast.success('Analysis complete! Review the detected structure below.');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to analyze PDF');
@@ -265,7 +266,8 @@ const UploadSample = () => {
                                 <div className="mb-3">
                                     <h4 className="mb-2">Detected Sections (in order)</h4>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                        {analysisResult.sectionsOrder?.map((section, index) => (
+                                        {/* Handle both sections and sectionsOrder for backward compatibility */}
+                                        {(analysisResult.sections || analysisResult.sectionsOrder)?.map((section, index) => (
                                             <div
                                                 key={index}
                                                 className="badge"

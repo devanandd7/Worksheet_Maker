@@ -22,6 +22,8 @@ const WorksheetPreview = () => {
     const [saving, setSaving] = useState(false);
     const [generatingPDF, setGeneratingPDF] = useState(false);
 
+    const [autoGenTriggered, setAutoGenTriggered] = useState(false);
+
     useEffect(() => {
         if (!currentWorksheet) {
             toast.error('No worksheet found. Please generate one first.');
@@ -31,6 +33,15 @@ const WorksheetPreview = () => {
         setWorksheet(currentWorksheet);
         setEditedContent(currentWorksheet.content || {});
     }, [currentWorksheet, navigate]);
+
+    // Auto-trigger PDF generation if missing
+    useEffect(() => {
+        if (worksheet && worksheet._id && !worksheet.pdfUrl && !generatingPDF && !autoGenTriggered) {
+            console.log('Auto-triggering PDF generation for:', worksheet._id);
+            setAutoGenTriggered(true);
+            handleGeneratePDF();
+        }
+    }, [worksheet, generatingPDF, autoGenTriggered]);
 
     const handleEdit = (section) => {
         setEditMode({ ...editMode, [section]: true });
@@ -76,19 +87,80 @@ const WorksheetPreview = () => {
     };
 
     const handleGeneratePDF = async () => {
-        if (!worksheet) return;
+        console.log('Generate PDF clicked. Worksheet:', worksheet);
+        if (!worksheet) {
+            console.error('No worksheet found in state');
+            return;
+        }
+        if (!worksheet._id) {
+            console.error('Worksheet has no ID:', worksheet);
+            toast.error('Error: Invalid worksheet data');
+            return;
+        }
 
         setGeneratingPDF(true);
         try {
+            console.log('Sending PDF generate request for ID:', worksheet._id);
             const response = await api.generateWorksheetPDF(worksheet._id);
+            console.log('PDF Generated Response:', response.data);
 
-            setWorksheet(response.data.worksheet);
-            setCurrentWorksheet(response.data.worksheet);
-            toast.success('PDF generated successfully!');
+            // Backend returns: { success: true, message: '...', pdfUrl: '...', pdfBase64: '...' }
+            const { pdfUrl, pdfBase64 } = response.data;
 
-            // Auto-download
-            if (response.data.worksheet.pdfUrl) {
-                window.open(response.data.worksheet.pdfUrl, '_blank');
+            if (pdfUrl) {
+                // Update local state with new PDF URL
+                const updatedWorksheet = { ...worksheet, pdfUrl };
+                setWorksheet(updatedWorksheet);
+                setCurrentWorksheet(updatedWorksheet);
+                toast.success('PDF generated successfully!');
+
+                // Auto-download logic
+                try {
+                    toast.info('Downloading PDF...');
+                    let blob;
+
+                    if (pdfBase64) {
+                        // Use direct base64 data
+                        const byteCharacters = atob(pdfBase64);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        blob = new Blob([byteArray], { type: 'application/pdf' });
+                    } else {
+                        // Fallback to fetch
+                        const pdfResponse = await fetch(pdfUrl);
+                        if (!pdfResponse.ok) throw new Error(`Network response was not ok: ${pdfResponse.status}`);
+                        const contentType = pdfResponse.headers.get('content-type');
+                        if (contentType && !contentType.includes('pdf') && !contentType.includes('application/octet-stream')) {
+                            throw new Error('Server returned invalid file type');
+                        }
+                        blob = await pdfResponse.blob();
+                    }
+
+                    if (blob.size < 100) throw new Error('File empty');
+
+                    const url = window.URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `Worksheet_${worksheet.topic.replace(/\s+/g, '_')}.pdf`);
+                    document.body.appendChild(link);
+                    link.click();
+
+                    // Cleanup
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                    toast.success('Download started!');
+                } catch (err) {
+                    console.error('Auto-download failed, falling back to direct link:', err);
+                    window.open(pdfUrl, '_blank');
+                    toast.warning('Auto-download failed. Opening PDF in new tab.');
+                }
+            } else {
+                console.error('PDF URL missing in response:', response.data);
+                toast.warning('PDF generated but URL is missing.');
             }
         } catch (error) {
             toast.error('Failed to generate PDF');

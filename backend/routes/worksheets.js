@@ -265,6 +265,7 @@ router.put('/:id', auth, async (req, res) => {
  */
 router.post('/:id/generate-pdf', auth, async (req, res) => {
     try {
+        console.log('Received PDF generation request for ID:', req.params.id);
         const worksheet = await Worksheet.findOne({
             _id: req.params.id,
             userId: req.userId
@@ -299,7 +300,8 @@ router.post('/:id/generate-pdf', auth, async (req, res) => {
         res.json({
             success: true,
             message: 'PDF generated successfully',
-            pdfUrl: uploadResult.url
+            pdfUrl: uploadResult.url,
+            pdfBase64: pdfBuffer.toString('base64')
         });
     } catch (error) {
         console.error('Generate PDF error:', error);
