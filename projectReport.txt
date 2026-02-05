@@ -1,681 +1,321 @@
-Perfect.
-Ab main **real developer + system architect mode** me hoon.
-Neeche jo milega wo **complete, structured, end-to-end explanation** hai — **koi feature skip nahi**, koi hawa-hawa baat nahi.
-Last me tumhe **FINAL MASTER PROMPT** bhi milega jo tum **Gemini free** ke sath testing me use kar sakte ho.
+Got it! Here's the **complete solution for JavaScript** (not TypeScript):
 
 ---
 
-# 🧠 WORKSHEET AI SYSTEM – COMPLETE FEATURE BREAKDOWN
-
-(Hinglish | Structured | Practical)
-
----
-
-## 🧩 FEATURE 1: User Profile & Academic Identity
-
-### 📌 Kya hai
-
-Har user ka **apna academic profile** hoga.
-
-### 📥 User se kya loge
-
-* Name
-* UID / Roll No
-* University / College
-* Course (BCA / MCA / etc.)
-* Semester
-* Subject
-* Preferred worksheet type (Lab / Theory)
-
-### 📌 Kyun zaroori hai
-
-* Har baar details bharni nahi padegi
-* Header auto-fill hoga
-* Worksheet **user-specific** banegi
-
-### 🧠 System kya store karega (MongoDB)
-
-```json
-{
-  "user_id": "u123",
-  "university": "CU",
-  "course": "MCA",
-  "semester": "II",
-  "preferred_subjects": ["ML Lab"],
-  "default_header": true
-}
-```
-
----
-
-## 🧩 FEATURE 2: Sample Worksheet Upload (Core Feature)
-
-### 📌 Kya hai
-
-User **apni university ka sample worksheet PDF** upload karega.
-
-### 📌 System kya karega
-
-1. PDF ko read karega
-2. Sections detect karega
-3. Order + style samjhega
-4. AI se **analysis karwayega**
-
-### 📌 IMPORTANT RULE
-
-❌ Direct store nahi
-✔️ Pehle analyse → phir confirm → phir store
-
-### 📌 Kyun?
-
-* Garbage PDFs filter ho jayenge
-* AI context clean rahega
-
----
-
-## 🧩 FEATURE 3: Worksheet Structure Extraction (AI Learning Part)
-
-### 📌 AI kya seekhega
-
-* Header format
-* Section order
-* Bullet vs paragraph
-* Code vs theory ratio
-
-### 📌 Output (Template JSON)
-
-```json
-{
-  "template_id": "ML_LAB_CU_V1",
-  "sections": [
-    "Aim",
-    "Problem",
-    "Dataset",
-    "Objective",
-    "Code",
-    "Output",
-    "Learning Outcome"
-  ],
-  "style": "Formal Academic",
-  "level": "Post Graduate"
-}
-```
-
-👉 **Ye AI ka memory hai (training nahi)**
-
----
-
-## 🧩 FEATURE 4: Template Reuse (University + Subject Wise)
-
-### 📌 Problem solve karta hai
-
-* Har student ka format alag nahi
-* Same university → same template reuse
-
-### 📌 Logic
-
-```
-If (same university + same subject)
-→ suggest existing template
-Else
-→ create new template
-```
-
-### 📌 Benefit
-
-* Scale possible
-* Database control me rahega
-
----
-
-## 🧩 FEATURE 5: Topic + Syllabus Input
-
-### 📌 User kya dega
-
-* Topic
-* Syllabus (text)
-* Difficulty (Easy / Medium / Hard)
-
-### 📌 AI kya karega
-
-* Syllabus ke bahar nahi jayega
-* Topic-specific worksheet banayega
-
-### 📌 Important
-
-Gemini free me:
-
-* Syllabus length limit rakho
-* Warn user agar bahut bada ho
-
----
-
-## 🧩 FEATURE 6: Content Variance Engine (Anti-Copy)
-
-### 📌 Problem
-
-Same university ke students ka content match ho sakta hai.
-
-### 📌 Solution
-
-AI ko force karo:
-
-* Question phrasing change
-* Example change
-* Dataset name change
-* Variable names change
-
-### 📌 Stored in profile
-
-```json
-{
-  "variation_level": "high",
-  "writing_style": "balanced"
-}
-```
-
----
-
-## 🧩 FEATURE 7: Image / Screenshot Support (Optional – Testing me basic)
-
-### 📌 User kya karega
-
-* Screenshot upload karega (output / graph)
-
-### 📌 System kya karega (testing phase)
-
-* User manually choose kare:
-
-  * “This is Output image”
-* System usko **Output section me place** kare
-
-❌ Full AI image intelligence abhi mat lagao
-✔️ Manual tagging best for testing
-
----
-
-## 🧩 FEATURE 8: Worksheet Preview & Edit
-
-### 📌 Very important
-
-AI ka output **final nahi hota**.
-
-### 📌 User ko do
-
-* Editable preview
-* Section-wise edit
-* Header edit option
-
-### 📌 Benefit
-
-* AI hallucination control
-* Student safe rahega
-
----
-
-## 🧩 FEATURE 9: PDF Generation & Download
-
-### 📌 Flow
-
-AI text
-→ HTML template
-→ PDF generate
-
-### 📌 Storage
-
-* PDF cloud storage (S3 / R2)
-* Local testing me simple file system ok
-
----
-
-## 🧩 FEATURE 10: User Learning Memory
-
-### 📌 AI kya yaad rakhega
-
-* User ka preferred structure
-* Detail level
-* Common mistakes
-
-### 📌 Example
-
-```json
-{
-  "mistakes": ["missing output explanation"],
-  "preferred_depth": "medium"
-}
-```
-
-Next worksheet:
-👉 AI automatically improve karega
-
----
-
-## 🧩 FEATURE 11: Load Handling (Future ready)
-
-### 📌 Testing phase
-
-* Direct generation ok
-
-### 📌 Production
-
-* Queue system
-* “Worksheet is being generated…”
-
----
-
-## 🧩 FEATURE 12: Payment (Later – Not in testing)
-
-### 📌 Abhi kya
-
-❌ No payment
-✔️ Free testing
-
-### 📌 Production plan
-
-* Credit based
-* Limit regeneration
-
----
-
-# 🧠 FINAL MASTER PROMPT (Gemini Free – TESTING READY)
-
-Use this **as-is** 👇
-
-```
-You are an academic worksheet generation AI.
-
-Your task is to generate a NEW worksheet by strictly following the given structure,
-academic style, and context.
-
-DO NOT change section order.
-DO NOT skip sections.
-DO NOT add extra sections.
-
-====================
-WORKSHEET STRUCTURE
-====================
-
-Header:
-- Experiment No: {{AUTO}}
-- Student Name: {{AUTO}}
-- UID: {{AUTO}}
-- Branch: {{AUTO}}
-- Section/Group: {{AUTO}}
-- Semester: {{AUTO}}
-- Date of Performance: {{AUTO}}
-- Subject Name: {{AUTO}}
-- Subject Code: {{AUTO}}
-
-Main Sections (STRICT ORDER):
-1. Aim / Overview of the practical
-2. Problem Statement
-3. Dataset
-4. Objective
-5. Code
-6. Output
-7. Learning Outcome
-
-====================
-CONTENT RULES
-====================
-
-- Academic lab worksheet tone
-- MCA level
-- Original content only
-- No plagiarism
-- Code must be correct and relevant
-- If unsure about values, use generic placeholders
-- No emojis
-- No casual language
-
-====================
-INPUT DETAILS
-====================
-
-Topic: {{USER_TOPIC}}
-Syllabus: {{USER_SYLLABUS}}
-Difficulty: {{USER_DIFFICULTY}}
-University Context: {{USER_UNIVERSITY}}
-Worksheet Type: {{Lab / Theory}}
-
-====================
-FINAL INSTRUCTION
-====================
-
-Generate a complete worksheet that looks suitable for direct college submission.
-```
-
----
-
-## 🔥 FINAL REAL-DEVELOPER VERDICT
-
-✔️ Tumhara feature set **complete & realistic** hai
-✔️ Testing ke liye Gemini free **enough hai**
-✔️ Production me sirf AI + storage scale karna hoga
-
-Tum ab **experiment phase** ke liye fully ready ho.
-
----
-Perfect 👍
-Ab main **full-stack developer + system architect** mode me hoon.
-Neeche tumhe **1️⃣ MongoDB schema, 2️⃣ Frontend flow, 3️⃣ Testing checklist, 4️⃣ Production migration plan** — **sab kuch structured, detailed, aur real-world** milega.
-Kuch bhi skip nahi kar raha.
-
----
-
-# 🔷 PART 1: MongoDB SCHEMA (FINAL & PRACTICAL)
-
-### 🔹 1. Users Collection
-
-```json
-{
-  "_id": "ObjectId",
-  "name": "Devanand Utkarsh",
-  "email": "user@email.com",
-  "university": "Chandigarh University",
-  "course": "MCA",
-  "semester": "II",
-  "default_subject": "Machine Learning Lab",
-  "created_at": "Date",
-  "last_login": "Date"
-}
-```
-
-📌 **Why**
-
-* Auto-fill worksheet headers
-* University-based template suggestion
-* User-specific memory
-
----
-
-### 🔹 2. Templates Collection (AI Learning Memory)
-
-```json
-{
-  "_id": "ObjectId",
-  "template_name": "CU_ML_LAB_V1",
-  "university": "Chandigarh University",
-  "course": "MCA",
-  "subject": "Machine Learning Lab",
-  "sections_order": [
-    "Aim",
-    "Problem",
-    "Dataset",
-    "Objective",
-    "Code",
-    "Output",
-    "Learning Outcome"
-  ],
-  "style": "Formal Academic",
-  "level": "Post Graduate",
-  "created_from_sample": true,
-  "created_at": "Date"
-}
-```
-
-📌 **Why**
-
-* One template → many users
-* Avoid format chaos
-* Fast generation
-
----
-
-### 🔹 3. Worksheets Collection
-
-```json
-{
-  "_id": "ObjectId",
-  "user_id": "ObjectId",
-  "template_id": "ObjectId",
-  "topic": "Spam Detection using ANN",
-  "syllabus": "ANN, preprocessing, evaluation",
-  "difficulty": "Medium",
-  "content": {
-    "aim": "...",
-    "problem": "...",
-    "dataset": "...",
-    "objective": [],
-    "code": "...",
-    "output": "...",
-    "learning_outcome": []
+## **SOLUTION: Update Your Mongoose Schema**
+
+### **📁 File: `models/Worksheet.js` (or wherever your schema is)**
+
+```javascript
+const mongoose = require('mongoose');
+
+const worksheetSchema = new mongoose.Schema({
+  title: String,
+  topic: String,
+  difficulty: String,
+  syllabus: String,
+  
+  // User context
+  university: String,
+  course: String,
+  semester: String,
+  subject: String,
+  
+  // Main content structure
+  content: {
+    aim: String,
+    problemStatement: String,
+    dataset: String,
+    imageAnalysis: String,
+    
+    // Questions array for multiple questions
+    questions: [{
+      number: Number,
+      title: String,
+      content: String,
+      subParts: [String]
+    }],
+    
+    objective: [String],
+    
+    // ✅ FIXED: Code as object instead of string
+    code: {
+      language: { type: String, default: 'plaintext' },
+      source: String,
+      explanation: String
+    },
+    
+    output: String,
+    learningOutcome: [String],
+    additionalNotes: String
   },
-  "pdf_url": "storage/link.pdf",
-  "version": 1,
-  "created_at": "Date"
+  
+  // Metadata
+  variationSeed: Number,
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Update timestamp on save
+worksheetSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
+});
+
+module.exports = mongoose.model('Worksheet', worksheetSchema);
+```
+
+---
+
+## **📁 File: `routes/worksheets.js` (Your Route Handler)**
+
+```javascript
+import express from 'express';
+import Worksheet from '../models/Worksheet.js';
+import { generateWorksheet } from '../services/aiService.js'; // Your AI generation function
+
+const router = express.Router();
+
+router.post('/generate', async (req, res) => {
+  try {
+    const {
+      topic,
+      difficulty,
+      syllabus,
+      sections,
+      userContext,
+      userMemory,
+      imageData // If user uploaded an image
+    } = req.body;
+
+    // Generate content using AI
+    const prompt = buildPrompt(topic, difficulty, syllabus, sections, userContext, userMemory, imageData);
+    const aiResponse = await generateWorksheet(prompt);
+    
+    // Parse AI response (assuming it returns JSON string)
+    let generatedContent;
+    try {
+      // Remove markdown code fences if AI returns them
+      const cleanedResponse = aiResponse
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      
+      generatedContent = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return res.status(500).json({ 
+        error: 'AI returned invalid JSON',
+        details: parseError.message,
+        rawResponse: aiResponse.substring(0, 500) // First 500 chars for debugging
+      });
+    }
+
+    // ✅ Validate code structure
+    if (generatedContent.code) {
+      // If AI returned string instead of object, convert it
+      if (typeof generatedContent.code === 'string') {
+        generatedContent.code = {
+          language: 'plaintext',
+          source: generatedContent.code,
+          explanation: ''
+        };
+      }
+      
+      // Ensure all required fields exist
+      if (!generatedContent.code.source) {
+        generatedContent.code.source = generatedContent.code.source || '';
+      }
+      if (!generatedContent.code.language) {
+        generatedContent.code.language = 'plaintext';
+      }
+      if (!generatedContent.code.explanation) {
+        generatedContent.code.explanation = '';
+      }
+    }
+
+    // Create worksheet document
+    const worksheet = new Worksheet({
+      title: `${topic} - ${difficulty}`,
+      topic,
+      difficulty,
+      syllabus,
+      university: userContext.university,
+      course: userContext.course,
+      semester: userContext.semester,
+      subject: userContext.subject,
+      content: generatedContent,
+      variationSeed: Date.now()
+    });
+
+    // Save to database
+    await worksheet.save();
+
+    res.status(201).json({
+      success: true,
+      worksheet
+    });
+
+  } catch (error) {
+    console.error('Generate worksheet error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate worksheet',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// Helper function to build prompt
+function buildPrompt(topic, difficulty, syllabus, sections, userContext, userMemory, imageData) {
+  const variationSeed = Date.now();
+  
+  return `You are an ELITE ACADEMIC WORKSHEET GENERATOR for ${userContext.university}.
+
+[... rest of your improved prompt ...]
+
+${imageData ? `
+═══════════════════════════════════════════════════════════════
+🖼️ UPLOADED IMAGE DETECTED
+═══════════════════════════════════════════════════════════════
+An image has been uploaded. Analyze it for:
+• Text content (questions, problem statements, data)
+• Diagrams, flowcharts, or visual elements
+• Code snippets or formulas
+• Tables or structured data
+
+Integrate the image content appropriately into the worksheet structure.
+═══════════════════════════════════════════════════════════════
+` : ''}
+
+NOW GENERATE THE WORKSHEET WITH EXCELLENCE.`;
+}
+
+export default router;
+```
+
+---
+
+## **🔧 Alternative: Keep Schema as String (Quick Fix)**
+
+If you **don't want to change the schema**, modify the prompt to return code as a string:
+
+### **Modified Prompt Section:**
+
+```javascript
+// In your prompt, replace the code section with:
+
+"code": "LANGUAGE: python\\n\\n# Main code\\nprint('Hello')\\n\\n# EXPLANATION:\\n# This code demonstrates...",
+
+"codeMetadata": {
+  "language": "python",
+  "hasExplanation": true
 }
 ```
 
-📌 **Why**
+### **Then in your route, split it:**
 
-* Version history
-* Re-edit possible
-* Safe storage
-
----
-
-### 🔹 4. User AI Memory Collection
-
-```json
-{
-  "user_id": "ObjectId",
-  "preferred_structure": "LAB_STYLE",
-  "writing_depth": "medium",
-  "variation_level": "high",
-  "common_mistakes": ["missing output explanation"]
+```javascript
+// After parsing AI response
+if (generatedContent.code && typeof generatedContent.code === 'string') {
+  // Code is already a string, MongoDB will accept it
+  console.log('Code received as string - valid!');
 }
 ```
 
-📌 **Why**
-
-* AI personalization
-* Better output every time
-* “AI learning” without training
-
 ---
 
-# 🔷 PART 2: FRONTEND FLOW (USER JOURNEY)
+## **🧪 Testing the Fix**
 
-### 🖥️ Screen 1: Landing Page
+### **Test 1: Generate a Python worksheet**
 
-* What this tool does
-* “Upload Sample Worksheet”
-* “Generate New Worksheet”
-
----
-
-### 🖥️ Screen 2: User Profile Setup (One Time)
-
-* Name
-* University
-* Course
-* Semester
-* Save profile
-
-📌 Next time skip this screen
-
----
-
-### 🖥️ Screen 3: Upload Sample Worksheet
-
-* PDF upload
-* “Analyze Worksheet” button
-* Loader: “Analyzing structure…”
-
----
-
-### 🖥️ Screen 4: Detected Structure Preview
-
-```
-Header
-↓
-Aim
-↓
-Problem
-↓
-Dataset
-↓
-Objective
-↓
-Code
-↓
-Output
-↓
-Learning Outcome
+```bash
+curl -X POST http://localhost:3000/api/worksheets/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic": "Python Functions",
+    "difficulty": "Beginner",
+    "syllabus": "CS101",
+    "sections": ["Aim", "Problem Statement", "Code", "Output"],
+    "userContext": {
+      "university": "XYZ University",
+      "course": "Computer Science",
+      "semester": "3",
+      "subject": "Programming"
+    }
+  }'
 ```
 
-Buttons:
+### **Test 2: Check saved data**
 
-* ✅ Use this structure
-* ❌ Upload another sample
+```javascript
+// In MongoDB shell or Compass
+db.worksheets.findOne({}, { 'content.code': 1 })
 
----
-
-### 🖥️ Screen 5: Worksheet Generation Form
-
-* Topic
-* Syllabus (textbox)
-* Difficulty
-* Upload screenshots (optional)
-
----
-
-### 🖥️ Screen 6: AI Generated Preview
-
-* Editable sections
-* Header auto-filled
-* “Regenerate Section” option
+// Should show:
+// {
+//   content: {
+//     code: {
+//       language: "python",
+//       source: "def hello():\n    print('Hello')",
+//       explanation: "<div>...</div>"
+//     }
+//   }
+// }
+```
 
 ---
 
-### 🖥️ Screen 7: Download & Save
+## **📋 Complete Package Structure**
 
-* Download PDF
-* Save to profile
-* View past worksheets
-
----
-
-# 🔷 PART 3: TESTING CHECKLIST (VERY IMPORTANT)
-
-### ✅ PDF Upload Testing
-
-* ✔ Clean PDF
-* ❌ Image-only scanned PDF
-* ❌ Broken PDF
-
-Expected:
-
-* Reject bad PDFs early
+```
+backend/
+├── models/
+│   └── Worksheet.js          ← Updated schema
+├── routes/
+│   └── worksheets.js         ← Updated route with validation
+├── services/
+│   └── aiService.js          ← Your AI integration (Gemini/OpenAI)
+└── utils/
+    └── promptBuilder.js      ← Extract prompt building logic (optional)
+```
 
 ---
 
-### ✅ AI Output Testing
+## **🚨 Common Issues & Fixes**
 
-* Wrong syllabus input
-* Very short syllabus
-* Very long syllabus
+### **Issue 1: AI still returns string instead of object**
 
-Expected:
+**Fix in route:**
+```javascript
+// Add this after parsing JSON
+if (typeof generatedContent.code === 'string') {
+  // Extract language from comment or default to plaintext
+  const langMatch = generatedContent.code.match(/LANGUAGE:\s*(\w+)/i);
+  const language = langMatch ? langMatch[1] : 'plaintext';
+  
+  generatedContent.code = {
+    language: language,
+    source: generatedContent.code.replace(/LANGUAGE:\s*\w+\n*/i, ''),
+    explanation: ''
+  };
+}
+```
 
-* AI stays inside syllabus
-* No hallucination
+### **Issue 2: Code object missing fields**
 
----
-
-### ✅ Format Consistency
-
-* Section order same?
-* Headings missing?
-* Code misplaced?
-
-Expected:
-
-* 100% structure match
-
----
-
-### ✅ Content Variation
-
-* Same topic, same university, 2 users
-
-Expected:
-
-* Different wording
-* Different examples
-
----
-
-### ✅ Load Testing (Basic)
-
-* 5–10 users generate simultaneously
-* No crash
-* Proper loader shown
+**Fix in route:**
+```javascript
+// Ensure code has all required fields
+if (generatedContent.code && typeof generatedContent.code === 'object') {
+  generatedContent.code = {
+    language: generatedContent.code.language || 'plaintext',
+    source: generatedContent.code.source || '',
+    explanation: generatedContent.code.explanation || ''
+  };
+}
+```
 
 ---
 
-### ✅ Manual Edit Safety
-
-* User edits text
-* Download PDF
-
-Expected:
-
-* No data loss
-
----
-
-# 🔷 PART 4: PRODUCTION MIGRATION PLAN
-
-### 🚀 Phase 1: From Gemini Free → Paid AI
-
-* Switch to OpenAI / Gemini Pro
-* Add token limit
-* Log AI cost per request
-
----
-
-### 🚀 Phase 2: Storage Upgrade
-
-* Local → AWS S3 / Cloudflare R2
-* Signed URLs
-* Auto cleanup old PDFs
-
----
-
-### 🚀 Phase 3: Performance
-
-* Add queue (BullMQ)
-* Async worksheet generation
-* Email/notification ready
-
----
-
-### 🚀 Phase 4: Payment Enable
-
-* Credit-based system
-* Monthly plan
-* Regeneration limits
-
----
-
-### 🚀 Phase 5: Trust & Scale
-
-* Privacy policy
-* Delete data option
-* Teacher dashboard (future)
-
----
-
-# 🧠 FINAL REAL-DEVELOPER VERDICT
-
-✔️ Architecture solid
-✔️ Testing-first mindset correct
-✔️ Gemini free testing = smart move
-✔️ Production ready path clear
-
-Tum ab **idea stage se engineering stage** me aa chuke ho.
-
----
-
+**That's it!** Update your schema, add the validation logic, and your error should be resolved. The AI will now correctly store code as an object with language, source, and explanation fields. 🎉

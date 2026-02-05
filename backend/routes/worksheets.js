@@ -100,6 +100,21 @@ router.post('/generate', auth, [
             variationSeed
         });
 
+        // ✅ PROCESS MULTI-PART QUESTIONS
+        let formattedQuestionTitle = '';
+        if (generatedContent.mainQuestionTitle && generatedContent.questionParts) {
+            formattedQuestionTitle = `<div style="margin-bottom: 24px;">
+              <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">${generatedContent.mainQuestionTitle}</h3>
+              <div style="margin-left: 20px;">
+                ${generatedContent.questionParts.map(p => `
+                  <p style="margin-bottom: 12px;">
+                    <b>${p.part}.</b> ${p.description}
+                  </p>
+                `).join('')}
+              </div>
+            </div>`;
+        }
+
         // Create worksheet document
         const worksheet = new Worksheet({
             userId: req.userId,
@@ -109,15 +124,29 @@ router.post('/generate', auth, [
             syllabus,
             difficulty: difficulty || 'medium',
             content: {
+                // ✅ NEW FIELDS
+                mainQuestionTitle: generatedContent.mainQuestionTitle || '',
+                questionParts: generatedContent.questionParts || [],
+                questionTitle: formattedQuestionTitle,
+
                 aim: generatedContent.aim || '',
                 problemStatement: generatedContent.problemStatement || '',
                 dataset: generatedContent.dataset || '',
                 algorithm: generatedContent.algorithm || '',
                 objective: generatedContent.objective || [],
-                code: generatedContent.code || '',
+                objective: generatedContent.objective || [],
+                code: (typeof generatedContent.code === 'string')
+                    ? { language: 'plaintext', source: generatedContent.code, explanation: '' }
+                    : {
+                        language: generatedContent.code?.language || 'plaintext',
+                        source: generatedContent.code?.source || generatedContent.code || '',
+                        explanation: generatedContent.code?.explanation || ''
+                    },
                 output: generatedContent.output || '',
                 conclusion: generatedContent.conclusion || '',
-                learningOutcome: generatedContent.learningOutcome || []
+                learningOutcome: generatedContent.learningOutcome || [],
+                imageAnalysis: generatedContent.imageAnalysis || null,
+                additionalNotes: generatedContent.additionalNotes || ''
             },
             status: 'generated',
             experimentNumber: experimentNumber || 'N/A',

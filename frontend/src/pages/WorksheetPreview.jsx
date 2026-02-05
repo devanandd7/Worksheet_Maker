@@ -206,6 +206,7 @@ const WorksheetPreview = () => {
     }
 
     const sections = [
+        { key: 'questionTitle', label: 'Main Question' },
         { key: 'aim', label: 'Aim' },
         { key: 'problemStatement', label: 'Problem Statement' },
         { key: 'dataset', label: 'Dataset Description' },
@@ -215,6 +216,94 @@ const WorksheetPreview = () => {
         { key: 'conclusion', label: 'Conclusion' }
     ];
 
+    const renderEditInput = (key) => {
+        const content = editedContent[key];
+
+        // Special handling for Code object
+        if (key === 'code' && typeof content === 'object' && content !== null) {
+            return (
+                <div className="flex flex-col gap-3">
+                    <div>
+                        <label className="text-sm font-bold text-gray-500">Source Code ({content.language || 'text'})</label>
+                        <textarea
+                            className="input-field"
+                            rows={15}
+                            value={content.source || ''}
+                            onChange={(e) => handleContentChange(key, { ...content, source: e.target.value })}
+                            style={{ fontFamily: 'monospace' }}
+                            placeholder="Paste your code here..."
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-bold text-gray-500">Explanation (HTML Supported)</label>
+                        <textarea
+                            className="input-field"
+                            rows={5}
+                            value={content.explanation || ''}
+                            onChange={(e) => handleContentChange(key, { ...content, explanation: e.target.value })}
+                            placeholder="Explain the logic..."
+                        />
+                    </div>
+                </div>
+            );
+        }
+
+        // Default string handling
+        return (
+            <textarea
+                className="input-field"
+                rows={key === 'code' ? 15 : 6}
+                value={typeof content === 'object' ? JSON.stringify(content, null, 2) : content || ''}
+                onChange={(e) => handleContentChange(key, e.target.value)}
+                style={{ fontFamily: key === 'code' ? 'monospace' : 'inherit' }}
+            />
+        );
+    };
+
+    const renderViewContent = (key) => {
+        const content = worksheet.content[key];
+
+        // Special handling for Code object
+        if (key === 'code' && typeof content === 'object' && content !== null) {
+            return (
+                <div>
+                    {content.source && (
+                        <div className="mb-3">
+                            <div className="text-xs text-gray-500 font-bold mb-1 uppercase">{content.language || 'Code'}</div>
+                            <pre style={{
+                                background: '#f4f4f4',
+                                padding: '1rem',
+                                borderRadius: '4px',
+                                overflowX: 'auto',
+                                fontFamily: 'monospace',
+                                border: '1px solid #ddd'
+                            }}>
+                                {content.source}
+                            </pre>
+                        </div>
+                    )}
+                    {content.explanation && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded">
+                            <h4 className="text-sm font-bold mb-2">Explanation:</h4>
+                            <div dangerouslySetInnerHTML={{ __html: content.explanation }} />
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Default string handling (Source code string or HTML string for other sections)
+        if (['questionTitle', 'aim', 'problemStatement', 'output', 'conclusion'].includes(key)) {
+            // Treat these as HTML safe
+            return <div dangerouslySetInnerHTML={{ __html: typeof content === 'string' ? content : '' }} />;
+        }
+
+        return (
+            <div style={{ whiteSpace: 'pre-wrap', fontFamily: key === 'code' ? 'monospace' : 'inherit' }}>
+                {typeof content === 'string' ? content : JSON.stringify(content)}
+            </div>
+        );
+    };
     return (
         <div style={{ padding: '2rem', minHeight: '100vh', background: 'var(--bg-secondary)' }}>
             <div className="container" style={{ maxWidth: '1000px' }}>
@@ -316,17 +405,9 @@ const WorksheetPreview = () => {
                             </div>
 
                             {editMode[key] ? (
-                                <textarea
-                                    className="input-field"
-                                    rows={key === 'code' ? 15 : 6}
-                                    value={editedContent[key] || ''}
-                                    onChange={(e) => handleContentChange(key, e.target.value)}
-                                    style={{ fontFamily: key === 'code' ? 'monospace' : 'inherit' }}
-                                />
+                                renderEditInput(key)
                             ) : (
-                                <div style={{ whiteSpace: 'pre-wrap', fontFamily: key === 'code' ? 'monospace' : 'inherit' }}>
-                                    {worksheet.content[key]}
-                                </div>
+                                renderViewContent(key)
                             )}
                         </div>
                     )
@@ -389,7 +470,7 @@ const WorksheetPreview = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

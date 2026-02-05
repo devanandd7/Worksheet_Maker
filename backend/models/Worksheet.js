@@ -30,15 +30,30 @@ const worksheetSchema = new mongoose.Schema({
         default: 'medium'
     },
     content: {
+        // ✅ NEW: For multi-part questions
+        mainQuestionTitle: { type: String, default: '' },
+        questionParts: [{
+            part: String,          // "a", "b", "c"
+            title: String,         // Short title
+            description: String    // Full description
+        }],
+        questionTitle: { type: String, default: '' },   // Formatted HTML for display
+
         aim: { type: String, default: '' },
         problemStatement: { type: String, default: '' },
         dataset: { type: String, default: '' },
         algorithm: { type: String, default: '' },
         objective: { type: [String], default: [] },
-        code: { type: String, default: '' },
+        code: {
+            language: { type: String, default: 'plaintext' },
+            source: { type: String, default: '' },
+            explanation: { type: String, default: '' }
+        },
         output: { type: String, default: '' },
         conclusion: { type: String, default: '' },
-        learningOutcome: { type: [String], default: [] }
+        learningOutcome: { type: [String], default: [] },
+        imageAnalysis: { type: mongoose.Schema.Types.Mixed, default: null },
+        additionalNotes: { type: String, default: '' }
     },
     images: [{
         url: String,

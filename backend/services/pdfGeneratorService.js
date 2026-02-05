@@ -226,9 +226,10 @@ class PDFGeneratorService {
     </tr>
   </table>
 
-  <!-- Title -->
-  <div class="title">${worksheet.topic}</div>
+  <!-- Title (Only show if no structured, formatted question title exists) -->
+  ${!worksheet.content.questionTitle ? `<div class="title">${worksheet.topic}</div>` : ''}
 
+  ${this.renderSection('Main Question', worksheet.content.questionTitle)}
   ${this.renderSection('Aim / Overview of the Practical', worksheet.content.aim)}
   ${this.renderSection('Problem Statement', worksheet.content.problemStatement)}
   ${this.renderSection('Dataset', worksheet.content.dataset)}
@@ -264,11 +265,40 @@ class PDFGeneratorService {
 
   renderCode(code) {
     if (!code) return '';
-    return `
+
+    let codeSource = code;
+    let codeExplanation = '';
+    let languageLabel = '';
+
+    // Handle code object structure
+    if (typeof code === 'object') {
+      codeSource = code.source || '';
+      codeExplanation = code.explanation || '';
+      languageLabel = code.language ? ` (${code.language})` : '';
+    }
+
+    if (!codeSource && !codeExplanation) return '';
+
+    let html = `
   <div class="section">
-    <div class="section-heading">Code / Implementation</div>
-    <pre class="code-block">${this.escapeHtml(code)}</pre>
+    <div class="section-heading">Code / Implementation${this.escapeHtml(languageLabel)}</div>`;
+
+    if (codeSource) {
+      html += `
+    <pre class="code-block">${this.escapeHtml(codeSource)}</pre>`;
+    }
+
+    if (codeExplanation) {
+      html += `
+    <div class="section-content" style="margin-top: 10px; font-style: italic;">
+      <b>Explanation:</b><br/>
+      ${codeExplanation}
+    </div>`;
+    }
+
+    html += `
   </div>`;
+    return html;
   }
 
   renderOutput(output, images) {
