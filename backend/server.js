@@ -1,0 +1,77 @@
+// Environment variables are preloaded via --import ./loadEnv.js in package.json
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+
+// Import routes
+import authRoutes from './routes/auth.js';
+import templateRoutes from './routes/templates.js';
+import worksheetRoutes from './routes/worksheets.js';
+import testRoutes from './routes/test.js';
+import testPdfRoutes from './routes/test-pdf.js';
+
+const app = express();
+
+// Security & Middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(morgan('dev'));
+
+// MongoDB Connection
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('✅ MongoDB Connected Successfully'))
+  .catch((err) => {
+    console.error('❌ MongoDB Connection Error:', err.message);
+    process.exit(1);
+  });
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/templates', templateRoutes);
+app.use('/api/worksheets', worksheetRoutes);
+app.use('/api/test', testRoutes);
+app.use('/api/test', testPdfRoutes);
+
+// Health Check
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'Worksheet AI System API is running',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
+  });
+});
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'API endpoint not found'
+  });
+});
+
+// Start Server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`\n🚀 Server running on port ${PORT}`);
+  console.log(`📝 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🌐 API URL: http://localhost:${PORT}/api`);
+});
+
+export default app;
