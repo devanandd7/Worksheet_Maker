@@ -14,6 +14,8 @@ import testPdfRoutes from './routes/test-pdf.js';
 
 const app = express();
 
+// Force restart for CORS check
+
 // Security & Middleware
 app.use(helmet());
 app.use(cors({
