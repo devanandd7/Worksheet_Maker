@@ -2,7 +2,6 @@
 // Each page should be created separately, but for quick setup, basic versions are here
 
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../pages/Auth.css';
 

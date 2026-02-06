@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWorksheet } from '../context/WorksheetContext';
 import { toast } from 'react-toastify';
@@ -66,7 +66,7 @@ const WorksheetPreview = () => {
             setAutoGenTriggered(true);
             handleGeneratePDF();
         }
-    }, [worksheet, generatingPDF, autoGenTriggered]);
+    }, [worksheet, generatingPDF, autoGenTriggered, loading, handleGeneratePDF]);
 
     const handleEdit = (section) => {
         setEditMode({ ...editMode, [section]: true });
@@ -111,7 +111,7 @@ const WorksheetPreview = () => {
         });
     };
 
-    const handleGeneratePDF = async () => {
+    const handleGeneratePDF = useCallback(async () => {
         console.log('Generate PDF clicked. Worksheet:', worksheet);
         if (!worksheet) {
             console.error('No worksheet found in state');
@@ -193,7 +193,7 @@ const WorksheetPreview = () => {
         } finally {
             setGeneratingPDF(false);
         }
-    };
+    }, [worksheet, setCurrentWorksheet, navigate]);
 
     const handleRegenerateSection = async (section) => {
         if (!worksheet) return;
