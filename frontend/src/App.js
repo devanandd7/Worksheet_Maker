@@ -7,7 +7,6 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import { ProfileSetup, Dashboard, UploadSample, StructurePreview, GenerateWorksheet, WorksheetPreview, Download, History } from './pages/index';
-
 import Navbar from './components/Navbar';
 
 // Protected Route Component
@@ -22,6 +21,7 @@ const ProtectedRoute = ({ children }) => {
         );
     }
 
+    //here  we need to set clerk auth
     return isAuthenticated ? (
         <>
             <Navbar />
