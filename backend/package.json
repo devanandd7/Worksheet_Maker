@@ -20,7 +20,7 @@
   "license": "ISC",
   "dependencies": {
     "@google/genai": "^1.40.0",
-    "@google/generative-ai": "^0.24.1",
+    "ast-types": "^0.14.2",
     "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.0",
@@ -37,6 +37,6 @@
     "puppeteer": "^21.6.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
+    "node": "v22.21.1"
   }
 }
