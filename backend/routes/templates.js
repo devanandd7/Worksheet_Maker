@@ -78,12 +78,50 @@ router.post('/analyze', auth, [
             });
         }
 
-        const { pdfUrl } = req.body;
+        const { pdfUrl, extractedText } = req.body;
+        console.log('Analyze Request Body Keys:', Object.keys(req.body));
+        console.log('PdfUrl:', pdfUrl);
+        console.log('ExtractedText present:', !!extractedText, 'Length:', extractedText ? extractedText.length : 0);
+
         const user = await User.findById(req.userId);
 
-        // Extract text from PDF
-        console.log('Extracting text from PDF...');
-        const extractedData = await pdfService.extractTextFromURL(pdfUrl);
+        let extractedData;
+
+        if (extractedText) {
+            console.log('Using provided extracted text...');
+            extractedData = { text: extractedText, pages: 1 }; // Default pages if not provided
+        } else {
+            // Extract text from PDF
+            console.log('Extracting text from PDF URL...');
+            try {
+                extractedData = await pdfService.extractTextFromURL(pdfUrl);
+            } catch (error) {
+                // If 401 and it's a Cloudinary URL, try to generate a signed URL
+                if (error.message.includes('401') && pdfUrl.includes('cloudinary.com')) {
+                    console.log('⚠️ 401 Error. Attempting to use signed URL...');
+
+                    // Extract public_id from URL
+                    // URL format: .../upload/v12345/folder/file.pdf
+                    const matches = pdfUrl.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+                    if (matches && matches[1]) {
+                        let publicId = matches[1];
+                        publicId = decodeURIComponent(publicId);
+
+                        const signedUrl = cloudinaryService.getSignedUrl(publicId);
+                        if (signedUrl) {
+                            console.log('Retrying with signed URL...');
+                            extractedData = await pdfService.extractTextFromURL(signedUrl);
+                        } else {
+                            throw error;
+                        }
+                    } else {
+                        throw error;
+                    }
+                } else {
+                    throw error;
+                }
+            }
+        }
 
         // Validate PDF structure
         const validation = pdfService.validatePDFStructure(extractedData);
@@ -206,7 +244,8 @@ router.get('/suggestions', auth, async (req, res) => {
         // Find matching templates
         const query = {
             university: user.university,
-            course: user.course
+            course: user.course,
+            status: { $ne: 'invalid' } // Hide invalid templates
         };
 
         if (subject) {
@@ -256,6 +295,70 @@ router.get('/:id', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to get template'
+        });
+    }
+});
+
+/**
+ * @route   GET /api/templates/:id/signed-url
+ * @desc    Get signed URL for template PDF preview
+ * @access  Private
+ */
+router.get('/:id/signed-url', auth, async (req, res) => {
+    try {
+        const template = await Template.findById(req.params.id);
+
+        if (!template) {
+            return res.status(404).json({
+                success: false,
+                message: 'Template not found'
+            });
+        }
+
+        if (!template.samplePdfUrl) {
+            return res.status(404).json({
+                success: false,
+                message: 'Template does not have a PDF'
+            });
+        }
+
+        // Get signed URL
+        let signedUrl = template.samplePdfUrl;
+
+        // If it's a Cloudinary URL, generate signed version
+        if (template.samplePdfUrl.includes('cloudinary.com')) {
+            const matches = template.samplePdfUrl.match(/\/upload\/(?:v\d+\/)?(.+)$/);
+            if (matches && matches[1]) {
+                const publicId = decodeURIComponent(matches[1]);
+
+                // Check if resource still exists in Cloudinary
+                const exists = await cloudinaryService.checkResourceExists(publicId);
+                if (!exists) {
+                    console.log(`🗑️ Template resource ${publicId} deleted from Cloudinary. Invalidating template record.`);
+                    template.status = 'invalid';
+                    await template.save();
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Template PDF has been deleted from Cloudinary'
+                    });
+                }
+
+                const generatedUrl = cloudinaryService.getSignedUrl(publicId);
+                if (generatedUrl) {
+                    signedUrl = generatedUrl;
+                }
+            }
+        }
+
+        res.json({
+            success: true,
+            signedUrl
+        });
+    } catch (error) {
+        console.error('Get signed URL error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get signed URL'
         });
     }
 });

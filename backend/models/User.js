@@ -52,6 +52,16 @@ const userSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    headerImageUrl: {
+        type: String,
+        trim: true,
+        default: null
+    },
+    headerImagePublicId: {
+        type: String,
+        trim: true,
+        default: null
+    },
     lastLogin: {
         type: Date,
         default: Date.now

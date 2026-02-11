@@ -37,13 +37,19 @@ class PDFGeneratorService {
         }
       });
 
-      await browser.close();
-
       return pdfBuffer;
     } catch (error) {
-      if (browser) await browser.close();
       console.error('PDF generation error:', error);
       throw new Error('Failed to generate PDF');
+    } finally {
+      // Always cleanup browser
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (closeError) {
+          console.error('Error closing browser:', closeError);
+        }
+      }
     }
   }
 
@@ -160,10 +166,12 @@ class PDFGeneratorService {
     }
     
     .image-container img {
-      max-width: 90%;
+      max-width: 100%;
+      max-height: 400px;
       height: auto;
+      object-fit: contain;
       border: 1px solid #eee;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05); /* Softer shadow */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     
     .image-caption {
@@ -277,6 +285,7 @@ class PDFGeneratorService {
   ${this.renderCode(worksheet.content.code, images)}
   ${this.renderOutput(worksheet.content.output, images)}
   ${this.renderLearningOutcomes(worksheet.content.learningOutcome)}
+  ${this.renderAdditionalImages(images, worksheet.content)}
 
 </body>
 </html>
@@ -304,6 +313,34 @@ class PDFGeneratorService {
       <img src="${img.url}" alt="${img.caption || 'Section Image'}" />
       <div class="image-caption">${img.caption || `Figure: ${sectionName} Image`}</div>
     </div>`).join('');
+  }
+
+  renderAdditionalImages(images, content) {
+    if (!images || images.length === 0) return '';
+
+    // Define standard sections that might have images
+    const standardSections = ['mainQuestion', 'aim', 'problemStatement', 'dataset', 'code', 'output', 'overview', 'result'];
+
+    // Normalize image sections
+    const unassignedImages = images.filter(img => {
+      if (!img.section) return true;
+      const section = img.section.toLowerCase();
+      // Check if this section is one of the standard ones we already rendered
+      // Note: 'overview' maps to 'aim', 'result' maps to 'output'
+      return !standardSections.includes(section);
+    });
+
+    if (unassignedImages.length === 0) return '';
+
+    return `
+  <div class="section">
+    <div class="section-heading">Additional Resources</div>
+    ${unassignedImages.map(img => `
+    <div class="image-container">
+      <img src="${img.url}" alt="${img.caption || 'Additional Image'}" />
+      <div class="image-caption">${img.caption || 'Figure: Additional Resource'}</div>
+    </div>`).join('')}
+  </div>`;
   }
 
   renderSection(heading, content, images = [], sectionKey = '') {

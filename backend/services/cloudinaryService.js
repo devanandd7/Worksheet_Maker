@@ -15,10 +15,11 @@ class CloudinaryService {
                 const uploadStream = cloudinary.uploader.upload_stream(
                     {
                         folder: `worksheet-ai/samples/${userId}`,
-                        resource_type: 'raw',        // Correct for PDFs
-                        public_id: `sample_${Date.now()}`,
+                        resource_type: 'raw',
+                        public_id: `sample_${Date.now()}.pdf`,
                         use_filename: true,
-                        unique_filename: false
+                        unique_filename: false,
+                        access_mode: 'public'
                     },
                     (error, result) => {
                         if (error) {
@@ -152,6 +153,58 @@ class CloudinaryService {
         } catch (error) {
             console.error('Delete file error:', error);
             throw new Error('Failed to delete file from Cloudinary');
+        }
+    }
+    /**
+     * Get signed URL for private file
+     * @param {String} publicId - Public ID of the file
+     * @param {String} resourceType - Type of resource (image/raw)
+     * @returns {String} - Signed URL
+     */
+    getSignedUrl(publicId, resourceType = 'raw') {
+        try {
+            return cloudinary.url(publicId, {
+                resource_type: resourceType,
+                sign_url: true,
+                type: 'authenticated', // Important for private files
+                secure: true
+            });
+        } catch (error) {
+            console.error('Get signed URL error:', error);
+            return null;
+        }
+    }
+
+    async checkResourceExists(publicId, resourceType = 'raw') {
+        try {
+            await cloudinary.api.resource(publicId, { resource_type: resourceType });
+            return true;
+        } catch (error) {
+            if (error.http_code === 404) {
+                return false;
+            }
+            // If it's another error (like auth or timeout), we might want to assume it exists or log it
+            console.error('Cloudinary check resource error:', error);
+            return true; // Default to true to avoid accidental hiding
+        }
+    }
+
+    /**
+     * Delete resource from Cloudinary (alias for deleteFile with image support)
+     * @param {String} publicId - Public ID of the file
+     * @returns {Promise<Object>} - Deletion result
+     */
+    async deleteResource(publicId) {
+        try {
+            // Try deleting as image first
+            const result = await cloudinary.uploader.destroy(publicId, {
+                resource_type: 'image'
+            });
+            console.log(`✅ Deleted image resource: ${publicId}`, result);
+            return result;
+        } catch (error) {
+            console.error('Delete resource error:', error);
+            throw new Error('Failed to delete resource from Cloudinary');
         }
     }
 }

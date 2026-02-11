@@ -152,34 +152,7 @@ router.post('/login', [
     }
 });
 
-/**
- * @route   GET /api/auth/profile
- * @desc    Get current user profile
- * @access  Private
- */
-router.get('/profile', auth, async (req, res) => {
-    try {
-        const user = await User.findById(req.userId);
 
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
-
-        res.json({
-            success: true,
-            user: user.toJSON()
-        });
-    } catch (error) {
-        console.error('Get profile error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error'
-        });
-    }
-});
 
 /**
  * @route   PUT /api/auth/profile
@@ -217,6 +190,167 @@ router.put('/profile', auth, async (req, res) => {
         });
     } catch (error) {
         console.error('Update profile error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+/**
+ * @route   GET /api/auth/profile
+ * @desc    Get current user profile
+ * @access  Private
+ */
+router.get('/profile', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId).select('-password');
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            user: user.toJSON()
+        });
+    } catch (error) {
+        console.error('Get profile error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+/**
+ * @route   POST /api/auth/upload-header
+ * @desc    Upload or update user's header image (college/university logo)
+ * @access  Private
+ */
+router.post('/upload-header', auth, async (req, res) => {
+    try {
+        const cloudinaryService = (await import('../services/cloudinaryService.js')).default;
+        const upload = (await import('../config/multer.js')).default;
+
+        // Use multer to handle file upload
+        upload.single('headerImage')(req, res, async (err) => {
+            if (err) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'File upload error: ' + err.message
+                });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No header image file provided'
+                });
+            }
+
+            try {
+                const user = await User.findById(req.userId);
+                if (!user) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'User not found'
+                    });
+                }
+
+                // Delete old header image from Cloudinary if exists
+                if (user.headerImagePublicId) {
+                    try {
+                        await cloudinaryService.deleteResource(user.headerImagePublicId);
+                        console.log(`✅ Deleted old header image: ${user.headerImagePublicId}`);
+                    } catch (deleteError) {
+                        console.error('Failed to delete old header:', deleteError);
+                        // Continue anyway - don't fail upload if delete fails
+                    }
+                }
+
+                // Upload new header image
+                const uploadResult = await cloudinaryService.uploadImage(
+                    req.file.buffer,
+                    req.userId,
+                    'headers'
+                );
+
+                // Update user with new header
+                user.headerImageUrl = uploadResult.url;
+                user.headerImagePublicId = uploadResult.publicId;
+                await user.save();
+
+                res.json({
+                    success: true,
+                    message: 'Header image uploaded successfully',
+                    headerImageUrl: uploadResult.url
+                });
+
+            } catch (uploadError) {
+                console.error('Header upload error:', uploadError);
+                res.status(500).json({
+                    success: false,
+                    message: 'Failed to upload header image'
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error('Upload header error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error'
+        });
+    }
+});
+
+/**
+ * @route   DELETE /api/auth/delete-header
+ * @desc    Delete user's header image
+ * @access  Private
+ */
+router.delete('/delete-header', auth, async (req, res) => {
+    try {
+        const cloudinaryService = (await import('../services/cloudinaryService.js')).default;
+
+        const user = await User.findById(req.userId);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        if (!user.headerImagePublicId) {
+            return res.status(404).json({
+                success: false,
+                message: 'No header image to delete'
+            });
+        }
+
+        // Delete from Cloudinary
+        try {
+            await cloudinaryService.deleteResource(user.headerImagePublicId);
+            console.log(`✅ Deleted header image: ${user.headerImagePublicId}`);
+        } catch (deleteError) {
+            console.error('Failed to delete header from Cloudinary:', deleteError);
+        }
+
+        // Clear from user
+        user.headerImageUrl = null;
+        user.headerImagePublicId = null;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Header image deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Delete header error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error'

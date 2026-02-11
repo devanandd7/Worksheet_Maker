@@ -1,0 +1,32 @@
+node_modules/
+.env
+.env.local
+.env.production
+*.log
+.DS_Store
+dist/
+build/
+coverage/
+.npm
+.eslintcache
+.vscode/
+
+# OS files
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.idea/
+*.sublime-*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.pem
+.cache/
+temp/
+tmp/

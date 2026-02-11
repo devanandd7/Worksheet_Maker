@@ -40,7 +40,11 @@ export const authAPI = {
     register: (userData) => api.post('/auth/register', userData),
     login: (credentials) => api.post('/auth/login', credentials),
     getProfile: () => api.get('/auth/profile'),
-    updateProfile: (data) => api.put('/auth/profile', data)
+    updateProfile: (data) => api.put('/auth/profile', data),
+    uploadHeader: (formData) => api.post('/auth/upload-header', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    deleteHeader: () => api.delete('/auth/delete-header')
 };
 
 // Template APIs
@@ -48,10 +52,11 @@ export const templateAPI = {
     uploadSample: (formData) => api.post('/templates/upload-sample', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
-    analyze: (pdfUrl) => api.post('/templates/analyze', { pdfUrl }),
+    analyze: (pdfUrl, extractedText) => api.post('/templates/analyze', { pdfUrl, extractedText }),
     save: (templateData) => api.post('/templates/save', templateData),
     getSuggestions: (subject) => api.get('/templates/suggestions', { params: { subject } }),
-    getById: (id) => api.get(`/templates/${id}`)
+    getById: (id) => api.get(`/templates/${id}`),
+    getSignedUrl: (id) => api.get(`/templates/${id}/signed-url`)
 };
 
 // Worksheet APIs
@@ -60,7 +65,8 @@ export const worksheetAPI = {
         // Check if data is FormData to set correct headers
         const isFormData = data instanceof FormData;
         return api.post('/worksheets/generate', data, {
-            headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {}
+            headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
+            params: { mode: 'sync' }
         });
     },
     uploadImage: (worksheetId, formData) => api.post(`/worksheets/${worksheetId}/upload-image`, formData, {
@@ -80,13 +86,16 @@ const unifiedAPI = {
     login: (credentials) => authAPI.login(credentials),
     getProfile: () => authAPI.getProfile(),
     updateProfile: (data) => authAPI.updateProfile(data),
+    uploadHeader: (formData) => authAPI.uploadHeader(formData),
+    deleteHeader: () => authAPI.deleteHeader(),
 
     // Templates
     uploadSamplePDF: (formData) => templateAPI.uploadSample(formData),
-    analyzeTemplate: (data) => templateAPI.analyze(data.pdfUrl),
+    analyzeTemplate: (data) => templateAPI.analyze(data.pdfUrl, data.extractedText),
     saveTemplate: (templateData) => templateAPI.save(templateData),
     getTemplateSuggestions: (subject) => templateAPI.getSuggestions(subject),
     getTemplateById: (id) => templateAPI.getById(id),
+    getTemplateSignedUrl: (id) => templateAPI.getSignedUrl(id),
 
     // Worksheets
     generateWorksheet: (data) => worksheetAPI.generate(data),

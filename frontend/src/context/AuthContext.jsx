@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
@@ -68,6 +68,21 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const refreshProfile = useCallback(async () => {
+        try {
+            const response = await authAPI.getProfile();
+            const updatedUser = response.data.user;
+
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            setUser(updatedUser);
+
+            return { success: true, user: updatedUser };
+        } catch (error) {
+            console.error('Failed to refresh profile:', error);
+            return { success: false };
+        }
+    }, []);
+
     const updateUser = (updatedUser) => {
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
@@ -82,6 +97,7 @@ export const AuthProvider = ({ children }) => {
             register,
             logout,
             updateUser,
+            refreshProfile,
             isAuthenticated: !!token
         }}>
             {children}

@@ -2,6 +2,8 @@
 
 Base URL: `http://localhost:5000/api`
 
+> **🔒 Security Notice:** All API endpoints are protected by rate limiting (1000 requests per 15 minutes per IP for dev)
+
 ---
 
 ## 🔐 Authentication Routes (`/api/auth`)
@@ -74,7 +76,12 @@ Authorization: Bearer {token}
 ```json
 {
   "success": true,
-  "user": { ... }
+  "user": {
+    "_id": "...",
+    "name": "John Doe",
+    "email": "john@example.com",
+    "headerImageUrl": "https://cloudinary..." // if uploaded
+  }
 }
 ```
 
@@ -99,6 +106,53 @@ Authorization: Bearer {token}
 ```
 
 **Response:** `200 OK`
+
+---
+
+### 5. Upload Header Image
+```http
+POST /api/auth/upload-header
+```
+
+**Headers:**
+```
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+**Body (Form Data):**
+```
+headerImage: [Image File]
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Header image uploaded successfully",
+  "headerImageUrl": "..."
+}
+```
+
+---
+
+### 6. Delete Header Image
+```http
+DELETE /api/auth/delete-header
+```
+
+**Headers:**
+```
+Authorization: Bearer {token}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "message": "Header image deleted successfully"
+}
+```
 
 ---
 
@@ -236,6 +290,32 @@ Authorization: Bearer {token}
 
 ---
 
+### 6. Get Signed URL for Template PDF
+```http
+GET /api/templates/:id/signed-url
+```
+
+**Headers:**
+```
+Authorization: Bearer {token}
+```
+
+**Description:** Get a signed URL to securely preview template PDF files stored in Cloudinary.
+
+**Response:** `200 OK`
+```json
+{
+  "success": true,
+  "signedUrl": "https://res.cloudinary.com/...signed_url..."
+}
+```
+
+**Error Responses:**
+- `404` - Template not found or PDF deleted from Cloudinary
+- `401` - Unauthorized
+
+---
+
 ## 📝 Worksheet Routes (`/api/worksheets`)
 
 ### 1. Generate Worksheet (AI)
@@ -246,19 +326,29 @@ POST /api/worksheets/generate
 **Headers:**
 ```
 Authorization: Bearer {token}
+Content-Type: multipart/form-data (if uploading images)
 ```
 
-**Body:**
-```json
-{
-  "topic": "Linear Regression",
-  "syllabus": "Linear regression, cost function, gradient descent",
-  "difficulty": "medium",
-  "subject": "Machine Learning",
-  "templateId": "optional_template_id",
-  "additionalInstructions": "Focus on practical implementation"
-}
+**Body (Form Data when uploading images):**
 ```
+topic: "Linear Regression" (required, 3-200 characters)
+syllabus: "Linear regression, cost function, gradient descent" (required, 10-5000 characters)
+difficulty: "medium" (optional, enum: easy|medium|hard)
+subject: "Machine Learning"
+templateId: "template_id_here" (required)
+additionalInstructions: "Focus on practical implementation"
+experimentNumber: "Exp 1"
+images: [Image files, max 5]
+headerImage: [University/College header image, max 1]
+```
+
+**Validation Rules:**
+- `topic`: 3-200 characters (required)
+- `syllabus`: 10-5000 characters (required)
+- `difficulty`: Must be one of: easy, medium, hard (case-insensitive)
+- `templateId`: Required
+- `images`: Maximum 5 image files
+- `headerImage`: Maximum 1 image file
 
 **Response:** `201 Created`
 ```json
@@ -528,7 +618,55 @@ Get token from `/api/auth/register` or `/api/auth/login`
 | 400 | Bad Request (validation error) |
 | 401 | Unauthorized (invalid/missing token) |
 | 404 | Not Found |
+| 429 | Too Many Requests (rate limit exceeded) |
 | 500 | Internal Server Error |
+
+---
+
+## 🛡️ Security Features
+
+### Rate Limiting
+- **Limit:** 100 requests per 15 minutes per IP address
+- **Response when exceeded:**
+  ```json
+  {
+    "message": "Too many requests from this IP, please try again later."
+  }
+  ```
+- **Headers:** Rate limit info included in response headers
+  - `RateLimit-Limit`: Maximum requests allowed
+  - `RateLimit-Remaining`: Requests remaining in window
+  - `RateLimit-Reset`: Time when limit resets
+
+### Input Validation
+- All user inputs are validated server-side
+- String length limits enforced
+- Enum values strictly checked
+- Malformed requests return `400` with detailed error messages
+
+### Authentication
+- JWT tokens expire after 30 days
+- Strong password hashing with bcrypt
+- Tokens must be included in `Authorization: Bearer {token}` header
+
+---
+
+## 🆕 Recent Updates (Feb 2026)
+
+### New Features
+- ✅ Rate limiting on all endpoints (100 req/15min)
+- ✅ Comprehensive input validation for worksheet generation
+- ✅ Signed URL endpoint for secure template PDF access
+- ✅ Template status field (active/invalid/archived)
+- ✅ Improved error handling with try-catch-finally patterns
+- ✅ Enhanced AI image analysis (up to 5 images per worksheet)
+- ✅ Header image support for university/college logos
+
+### Security Improvements
+- ✅ Removed hardcoded API keys
+- ✅ Enforced environment variable usage
+- ✅ Added comprehensive .gitignore
+- ✅ Puppeteer browser cleanup in finally blocks
 
 ---
 

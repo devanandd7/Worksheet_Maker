@@ -16,11 +16,10 @@ class GeminiService {
             return;
         }
 
-        // Use env variable or fallback to hardcoded key
-        const apiKey = process.env.GEMINI_API_KEY || "AIzaSyD4upcFweNP4suxDxe-5BNA7vsjOxZDt7A";
+        const apiKey = process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            throw new Error('Gemini API key not found. Please set GEMINI_API_KEY in .env file.');
+            throw new Error('❌ GEMINI_API_KEY not found. Please set it in .env file.');
         }
 
         try {
@@ -175,7 +174,9 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
             sections,
             userContext,
             userMemory,
-            variationSeed
+            variationSeed,
+            images,
+            additionalInstructions
         } = params;
 
         try {
@@ -186,7 +187,10 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
                 sections,
                 userContext,
                 userMemory,
-                variationSeed
+                variationSeed,
+                imageData: images,
+                imageCount: images ? images.length : 0,
+                additionalInstructions: additionalInstructions || ''
             });
 
             // Wrap generation with retry logic

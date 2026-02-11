@@ -58,6 +58,11 @@ const templateSchema = new mongoose.Schema({
     usageCount: {
         type: Number,
         default: 0
+    },
+    status: {
+        type: String,
+        enum: ['active', 'invalid', 'archived'],
+        default: 'active'
     }
 }, {
     timestamps: true

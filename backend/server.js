@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
 
 // Import routes
 import authRoutes from './routes/auth.js';
@@ -16,12 +17,22 @@ const app = express();
 
 // Force restart for CORS check
 
+// Rate Limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // Increased for development (reduce for production)
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
 // Security & Middleware
 app.use(helmet());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
+app.use(limiter); // Apply rate limiting to all routes
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(morgan('dev'));

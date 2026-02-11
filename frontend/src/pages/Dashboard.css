@@ -1,54 +1,56 @@
-/* Dashboard Layout */
+/* Dashboard Modern Styles */
 .dashboard-container {
-    padding: var(--spacing-xl) 0;
     max-width: 1200px;
     margin: 0 auto;
+    padding: 2rem var(--spacing-lg);
 }
 
 .dashboard-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-2xl);
+    align-items: flex-end;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
 }
 
 .dashboard-welcome h1 {
     font-size: 2.5rem;
-    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    background: linear-gradient(135deg, var(--text-primary), var(--primary));
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 0.5rem;
 }
 
 .dashboard-subtitle {
-    color: var(--text-secondary);
     font-size: 1.1rem;
+    color: var(--text-secondary);
 }
 
-/* Overview Cards */
 .overview-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-2xl);
+    gap: 2rem;
+    margin-bottom: 4rem;
 }
 
 .overview-card {
     background: white;
-    padding: var(--spacing-xl);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--radius-xl);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: 100%;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
 }
 
 .overview-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-8px);
     box-shadow: var(--shadow-xl);
     border-color: var(--primary-light);
 }
@@ -56,131 +58,156 @@
 .card-icon-wrapper {
     width: 56px;
     height: 56px;
-    border-radius: var(--radius-md);
+    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 1.5rem;
     font-size: 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+.overview-card:hover .card-icon-wrapper {
+    transform: scale(1.1) rotate(5deg);
 }
 
 .icon-blue {
-    background-color: #dbeafe;
-    color: #2563eb;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
 }
 
 .icon-purple {
-    background-color: #f3e8ff;
-    color: #9333ea;
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--secondary);
 }
 
 .icon-green {
-    background-color: #dcfce7;
-    color: #16a34a;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
 }
 
 .overview-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: var(--spacing-sm);
-    color: var(--text-primary);
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
 }
 
 .overview-card p {
-    color: var(--text-secondary);
-    margin-bottom: var(--spacing-xl);
+    font-size: 0.95rem;
     line-height: 1.6;
+    margin-bottom: 2rem;
+    color: var(--text-secondary);
 }
 
 .card-action {
     margin-top: auto;
 }
 
-/* Recent Activity Section */
+/* Profile Section */
 .recent-section {
     background: white;
     border-radius: var(--radius-xl);
-    padding: var(--spacing-xl);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid var(--border);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-light);
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--spacing-lg);
-    padding-bottom: var(--spacing-md);
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
 }
 
 .section-header h2 {
     font-size: 1.5rem;
-    color: var(--text-primary);
 }
 
+.profile-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.profile-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    transition: background 0.2s ease;
+}
+
+.profile-item:hover {
+    background: #fff;
+    border-color: var(--primary-light);
+    box-shadow: var(--shadow-sm);
+}
+
+.profile-icon {
+    padding: 0.75rem;
+    background: white;
+    border-radius: 12px;
+    color: var(--text-secondary);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Stats */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-lg);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
 }
 
 .stat-item {
-    background: var(--bg-secondary);
-    padding: var(--spacing-lg);
-    border-radius: var(--radius-md);
     text-align: center;
 }
 
 .stat-value {
     display: block;
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--primary);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: 0.25rem;
+    font-family: 'Outfit', sans-serif;
 }
 
 .stat-label {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
 }
 
-/* Animations */
-.animate-slide-up {
-    animation: slideUp 0.5s ease-out forwards;
-    opacity: 0;
-    transform: translateY(20px);
-}
-
-@keyframes slideUp {
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.delay-100 {
-    animation-delay: 100ms;
-}
-
-.delay-200 {
-    animation-delay: 200ms;
-}
-
-.delay-300 {
-    animation-delay: 300ms;
-}
-
-/* Responsive */
 @media (max-width: 768px) {
     .dashboard-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: var(--spacing-md);
+        gap: 1rem;
     }
 
-    .dashboard-welcome h1 {
-        font-size: 2rem;
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--bg-secondary);
+        padding: 1rem;
+        border-radius: var(--radius-md);
+    }
+
+    .stat-value {
+        margin-bottom: 0;
+        font-size: 1.25rem;
     }
 }
