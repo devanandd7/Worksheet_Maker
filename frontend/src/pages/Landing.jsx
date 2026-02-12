@@ -66,6 +66,16 @@ const Landing = () => {
                         Why Students Love Worksheet AI
                     </h2>
                     <div className="features-grid">
+                        {/* Highlights - Unique Content Card */}
+                        <div className="feature-card card" style={{ borderTop: '4px solid #f59e0b' }}>
+
+                            <div className="feature-icon" style={{ color: '#d97706' }}>
+                                <Shield size={32} />
+                            </div>
+                            <h3>100% Unique Content</h3>
+                            <p>Never match your worksheet content with others. AI generates original content every time.</p>
+                        </div>
+
                         <div className="feature-card card">
                             <div className="feature-icon">
                                 <Zap size={32} />
