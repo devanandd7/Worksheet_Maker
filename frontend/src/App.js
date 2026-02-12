@@ -32,9 +32,12 @@ const ProtectedRoute = ({ children }) => {
     ) : <Navigate to="/login" />;
 };
 
+import { Analytics } from '@vercel/analytics/react';
+
 function App() {
     return (
         <Router>
+            <Analytics />
             <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Landing />} />
