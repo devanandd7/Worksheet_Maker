@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { Analytics } from '@vercel/analytics/react';
 
 // Pages
 import Landing from './pages/Landing';
@@ -32,7 +33,7 @@ const ProtectedRoute = ({ children }) => {
     ) : <Navigate to="/login" />;
 };
 
-import { Analytics } from '@vercel/analytics/react';
+
 
 function App() {
     return (
