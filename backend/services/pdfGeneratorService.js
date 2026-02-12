@@ -63,6 +63,11 @@ class PDFGeneratorService {
     const currentDate = new Date().toLocaleDateString('en-IN');
     const images = worksheet.images || [];
 
+    // Format date of performance
+    const dateOfPerf = worksheet.dateOfPerformance
+      ? new Date(worksheet.dateOfPerformance).toLocaleDateString('en-IN')
+      : '';
+
     return `
 <!DOCTYPE html>
 <html lang="en">
@@ -79,212 +84,186 @@ class PDFGeneratorService {
     
     body {
       font-family: 'Times New Roman', Times, serif;
-      line-height: 1.6;
+      line-height: 1.5;
       color: #000;
-      font-size: 12pt;
+      font-size: 11pt;
+    }
+
+    /* Header Image Styling */
+    .header-image-container {
+    width: 100%;
+      text-align: center;
+      margin:0px;
+      
+    }
+    .header-image-container img {
+      max-width: 100%;
+      height: auto;
+      max-height: 100px;
+    }
+
+    /* Worksheet Heading */
+    .worksheet-heading {
+      text-align: center;
+      font-weight: bold;
+      font-size: 16pt;
+  
+      margin-bottom: 25px;
+      margin-top: 10px;
     }
     
+    /* Header Table (Student Details) */
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 25px;
-      border: none; /* Removed border */
+      margin-bottom: 30px;
+      border: none;
+   
     }
     
     .header-table td {
-      border: none; /* Removed border */
-      padding: 6px 8px; /* Slightly reduced padding for tighter vertical rhythm if needed, or keep generous */
-      font-size: 11pt;
+      border: none;
+      padding: 9px 2px; /* Added horizontal padding for spacing */
       vertical-align: top;
-    }
+      width: 60%; /* Two equal columns */
+     
     
-    .header-label {
-      font-weight: bold;
-      width: 25%; /* Adjusted width */
-      color: #333;
     }
 
-    .header-value {
-      width: 25%;
-      border-bottom: 1px solid #eee !important;
-      font-weight: 700; /* Bold */
-      color: #000000;   /* Dark Black */
+    .detail-row {
+      margin-bottom: 8px; /* Increased row spacing slightly */
+    }
+
+    .header-label {
+      font-weight: bold;
+      font-size: 15px; /* Explicitly set to 15px as requested */
+      text-transform: uppercase; /* Make labels CAPITAL */
+      margin-right: 8px; 
     }
     
-    .title {
-      text-align: center;
-      font-size: 18pt;
-      font-weight: bold;
-      margin-bottom: 25px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
     .section {
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       page-break-inside: avoid;
     }
     
     .section-heading {
       font-weight: bold;
-      font-size: 13pt;
-      margin-bottom: 12px;
-      text-decoration: none; /* Removed underline per "modern" request, or keep? specific request was header table. Let's keep typical section styles but clean up */
-      border-bottom: 1px solid #ddd;
-      padding-bottom: 5px;
-      color: #222;
+      font-size: 12pt;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      /* border-bottom: 1px solid #000; Optional: keep clean */
     }
     
     .section-content {
-      margin-left: 10px; /* Reduced indent for cleaner look */
       text-align: justify;
     }
     
     .code-block {
       background-color: #f8f9fa;
       border: 1px solid #eee;
-      padding: 15px;
+      padding: 10px;
       font-family: 'Courier New', monospace;
-      font-size: 10pt;
+      font-size: 9pt;
       white-space: pre-wrap;
       margin: 10px 0;
-      line-height: 1.4;
       border-radius: 4px;
     }
     
     .objective-list, .outcome-list {
-      margin-left: 30px;
-    }
-    
-    .objective-list li, .outcome-list li {
-      margin-bottom: 8px;
+      margin-left: 20px;
     }
     
     .image-container {
       text-align: center;
-      margin: 20px 0;
+      margin: 12px 0;
       page-break-inside: avoid;
     }
-    
     .image-container img {
       max-width: 100%;
-      max-height: 400px;
-      height: auto;
+      max-height: 350px;
       object-fit: contain;
       border: 1px solid #eee;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-    
     .image-caption {
       font-style: italic;
-      font-size: 10pt;
-      margin-top: 8px;
-      color: #555;
+      font-size: 9pt;
+      margin-top: 5px;
     }
 
-    /* Enhanced Formatting for AI Content */
-    ul, ol {
-      margin-left: 20px;
-      margin-bottom: 15px;
-    }
-    li {
-      margin-bottom: 5px;
-    }
-    b, strong {
-      font-weight: bold;
-    }
-    p {
-      margin-bottom: 10px;
-    }
+    /* Standard Elements */
+    b, strong { font-weight: bold; }
+    p { margin-bottom: 8px; }
     
-    /* Table Styling */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
-      font-size: 11pt;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background-color: #f2f2f2;
-      font-weight: bold;
-    }
-    
-    /* Remove borders from the header table specifically again to be safe if generic table style overrides */
-    .header-table, .header-table td {
-        border: none !important;
-    }
-
-    /* Header Image Styling */
-    .header-image-container {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    
-    .header-image-container img {
-      max-width: 100%;
-      height: auto;
-      max-height: 120px; /* Limit height to prevent taking up too much space */
-    }
-
     @media print {
-      body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
+      body { -webkit-print-color-adjust: exact; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Header Image (University/College Logo) -->
+  <!-- Header Image -->
   ${worksheet.headerImageUrl ? `
   <div class="header-image-container">
     <img src="${worksheet.headerImageUrl}" alt="University Header" />
   </div>` : ''}
 
-  <!-- Header Table -->
+  <!-- Worksheet Heading -->
+  <div class="worksheet-heading">
+    Worksheet No - ${this.cleanValue(worksheet.experimentNumber) || ''}
+  </div>
+
+  <!-- Student Details Table (2 Columns) -->
   <table class="header-table">
     <tr>
-      <td class="header-label">Experiment No:</td>
-      <td class="header-value">${this.cleanValue(worksheet.experimentNumber)}</td>
-      <td class="header-label">Date:</td>
-      <td class="header-value">${worksheet.dateOfPerformance ? new Date(worksheet.dateOfPerformance).toLocaleDateString('en-IN') : ''}</td>
-    </tr>
-    <tr>
-      <td class="header-label">Student Name:</td>
-      <td class="header-value">${this.cleanValue(user.name)}</td>
-      <td class="header-label">UID:</td>
-      <td class="header-value">${this.cleanValue(user.uid)}</td>
-    </tr>
-    <tr>
-      <td class="header-label">Branch:</td>
-      <td class="header-value">${this.cleanValue(user.branch || user.course)}</td>
-      <td class="header-label">Section/Group:</td>
-      <td class="header-value">${this.cleanValue(user.section)}</td>
-    </tr>
-    <tr>
-      <td class="header-label">Semester:</td>
-      <td class="header-value">${this.cleanValue(user.semester)}</td>
-      <td class="header-label">Subject:</td>
-      <td class="header-value">${this.cleanValue(user.defaultSubject)}</td>
+      <!-- Left Column -->
+      <td>
+        <div class="detail-row">
+          <span class="header-label">Student Name:</span> ${this.cleanValue(user.name)}
+        </div>
+        <div class="detail-row">
+          <span class="header-label">Branch:</span> ${this.cleanValue(user.branch || user.course)}
+        </div>
+        <div class="detail-row">
+          <span class="header-label">Semester:</span> ${this.cleanValue(user.semester)}
+        </div>
+        <div class="detail-row">
+          <span class="header-label">Subject Name:</span> ${this.cleanValue(worksheet.subject || user.defaultSubject)}
+        </div>
+      </td>
+      
+      <!-- Right Column -->
+      <td ">
+        <div class="detail-row">
+          <span class="header-label">UID:</span> ${this.cleanValue(user.uid)}
+        </div>
+        <div class="detail-row">
+          <span class="header-label">Section/Group:</span> ${this.cleanValue(user.section)}
+        </div>
+        <div class="detail-row">
+          <span class="header-label">Date of Performance:</span> ${dateOfPerf}
+        </div>
+        <div class="detail-row">
+          <span class="header-label">Subject Code:</span> 
+          <!-- Subject Code Placeholder -->
+        </div>
+      </td>
     </tr>
   </table>
 
-  <!-- Title (Only show if no structured, formatted question title exists) -->
-  ${!worksheet.content.questionTitle ? `<div class="title">${worksheet.topic}</div>` : ''}
+  <!-- Title (if needed, otherwise relying on Worksheet No) -->
+  <!-- Check if main question title exists to decide structure -->
+  ${!worksheet.content.questionTitle ? `<div style="text-align: center; font-weight: bold; margin-bottom: 20px; font-size: 14pt;">${worksheet.topic}</div>` : ''}
 
   ${this.renderSection('Main Question', worksheet.content.questionTitle, images, 'mainQuestion')}
-  ${this.renderSection('Aim / Overview of the Practical', worksheet.content.aim, images, 'aim')}
+  ${this.renderSection('Aim', worksheet.content.aim, images, 'aim')}
   ${this.renderSection('Problem Statement', worksheet.content.problemStatement, images, 'problemStatement')}
-  ${this.renderSection('Dataset', worksheet.content.dataset, images, 'dataset')}
+  ${this.renderSection('Dataset Description', worksheet.content.dataset, images, 'dataset')}
   ${this.renderObjectives(worksheet.content.objective)}
   ${this.renderCode(worksheet.content.code, images)}
   ${this.renderOutput(worksheet.content.output, images)}
   ${this.renderLearningOutcomes(worksheet.content.learningOutcome)}
+  ${this.renderSection('Conclusion', worksheet.content.conclusion, images, 'conclusion')}
+  
   ${this.renderAdditionalImages(images, worksheet.content)}
 
 </body>

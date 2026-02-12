@@ -313,7 +313,7 @@ Generate a worksheet that:
 ✓ Properly separates multi-part questions (a, b, c)
 ✓ Handles uploaded images/screenshots intelligently
 ✓ Maintains academic rigor across all disciplines
-
+✓ not add any images after the LEARNING OUTCOMES section
 ═══════════════════════════════════════════════════════════════
 🧠 INTELLIGENT MULTI-PART QUESTION DETECTION
 ═══════════════════════════════════════════════════════════════
