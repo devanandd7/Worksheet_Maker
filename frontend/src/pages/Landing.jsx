@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, Sparkles, Zap, Shield, Clock, Users } from 'lucide-react';
+import { FileText, Sparkles, Zap, Shield, Clock, Users, Image } from 'lucide-react';
 import './Landing.css';
 
 const Landing = () => {
@@ -22,7 +22,7 @@ const Landing = () => {
                     <div className="header-content">
                         <div className="logo">
                             <FileText size={32} />
-                            <span>Worksheet AI</span>
+                            <span>Worksheet Maker</span>
                         </div>
                         <nav className="nav-links">
                             <Link to="/login" className="btn btn-secondary btn-sm">Login</Link>
@@ -37,12 +37,12 @@ const Landing = () => {
                 <div className="container text-center">
                     <div className="fade-in">
                         <h1 className="hero-title">
-                            Generate Academic Worksheets
+                            Generate College & University Worksheets
                             <br />
                             <span className="gradient-text">Powered by AI</span>
                         </h1>
                         <p className="hero-description">
-                            Create university-specific, plagiarism-free worksheets in minutes.
+                            Create free, university-specific, plagiarism-free worksheets in minutes.
                             <br />
                             Perfect for students who value their time and academic integrity.
                         </p>
@@ -63,17 +63,24 @@ const Landing = () => {
             <section className="features-section">
                 <div className="container">
                     <h2 className="section-title text-center mb-4">
-                        Why Students Love Worksheet AI
+                        Why Students Love Worksheet Maker
                     </h2>
                     <div className="features-grid">
                         {/* Highlights - Unique Content Card */}
                         <div className="feature-card card" style={{ borderTop: '4px solid #f59e0b' }}>
-
                             <div className="feature-icon" style={{ color: '#d97706' }}>
                                 <Shield size={32} />
                             </div>
                             <h3>100% Unique Content</h3>
                             <p>Never match your worksheet content with others. AI generates original content every time.</p>
+                        </div>
+
+                        <div className="feature-card card">
+                            <div className="feature-icon">
+                                <Image size={32} />
+                            </div>
+                            <h3>Add Screenshots</h3>
+                            <p>Easily upload outputs, graphs, or circuit diagrams. AI places them perfectly in your worksheet.</p>
                         </div>
 
                         <div className="feature-card card">
@@ -175,7 +182,7 @@ const Landing = () => {
             {/* Footer */}
             <footer className="landing-footer">
                 <div className="container text-center">
-                    <p>&copy; 2026 Worksheet AI System. Built with ❤️ for students.</p>
+                    <p>&copy; 2026 Worksheet Maker Free. Built with ❤️ for students.</p>
                 </div>
             </footer>
         </div>
