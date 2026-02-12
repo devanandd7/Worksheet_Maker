@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Blocks specific paths if needed
+Disallow: /dashboard
+Disallow: /generate
+Disallow: /profile-setup
+
+# Link to sitemap
+Sitemap: https://your-domain.com/sitemap.xml
