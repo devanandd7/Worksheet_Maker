@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import { ProfileSetup, Dashboard, UploadSample, StructurePreview, GenerateWorksheet, WorksheetPreview, Download, History } from './pages/index';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -29,6 +30,7 @@ const ProtectedRoute = ({ children }) => {
             <main className="main-content">
                 {children}
             </main>
+            <Footer />
         </>
     ) : <Navigate to="/login" />;
 };
