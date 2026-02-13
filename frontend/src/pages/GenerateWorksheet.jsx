@@ -8,7 +8,7 @@ import { useDropzone } from 'react-dropzone';
 import api from '../services/api';
 
 const GenerateWorksheet = () => {
-    const { user, refreshProfile } = useAuth();
+    const { user, refreshProfile, getToken } = useAuth();
     const { currentTemplate, setCurrentWorksheet } = useWorksheet();
     const navigate = useNavigate();
 
@@ -30,7 +30,7 @@ const GenerateWorksheet = () => {
     const [loadingPreview, setLoadingPreview] = useState(false);
 
     // Template caching constants
-    const TEMPLATE_CACHE_KEY = 'worksheet_template_cache';
+    const TEMPLATE_CACHE_KEY = user?._id ? `worksheet_template_cache_${user._id}` : 'worksheet_template_cache_guest';
     const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
     const fetchTemplateSuggestions = useCallback(async (forceRefresh = false) => {
@@ -61,7 +61,8 @@ const GenerateWorksheet = () => {
 
         // Fetch from API
         try {
-            const response = await api.getTemplateSuggestions();
+            const token = await getToken();
+            const response = await api.getTemplateSuggestions(null, token);
             const templatesData = response.data.templates || [];
 
             // Cache the data
@@ -85,7 +86,7 @@ const GenerateWorksheet = () => {
         } finally {
             setLoadingTemplates(false);
         }
-    }, [selectedTemplate, CACHE_DURATION]);
+    }, [selectedTemplate, CACHE_DURATION, getToken, TEMPLATE_CACHE_KEY]);
 
     useEffect(() => {
         fetchTemplateSuggestions();
@@ -106,32 +107,50 @@ const GenerateWorksheet = () => {
 
     // Fetch signed URL for preview
     useEffect(() => {
+
         const fetchPreviewUrl = async () => {
-            if (!selectedTemplate?._id || !selectedTemplate.samplePdfUrl) {
+            if (!selectedTemplate) {
                 setPreviewUrl(null);
                 return;
             }
 
+            console.log('👀 Fetching preview for:', selectedTemplate.templateName);
+            console.log('🔗 Sample PDF URL from object:', selectedTemplate.samplePdfUrl);
+
+            setLoadingPreview(true);
             try {
-                setLoadingPreview(true);
                 // If it's already a public URL (not Cloudinary) or we want to try direct first, we could.
-                // But generally, always get signed URL if we implemented it.
-                const response = await api.getTemplateSignedUrl(selectedTemplate._id);
+                if (!selectedTemplate.samplePdfUrl) {
+                    console.warn('❌ Template has no samplePdfUrl');
+                    setPreviewUrl(null);
+                    return;
+                }
+
+                const token = await getToken();
+                const response = await api.getTemplateSignedUrl(selectedTemplate._id, token);
+
+                console.log('📡 Signed URL API Response:', response.data);
+
                 if (response.data.success && response.data.signedUrl) {
+                    console.log('✅ Setting preview URL:', response.data.signedUrl);
                     setPreviewUrl(response.data.signedUrl);
                 } else {
+                    console.warn('⚠️ API did not return signedUrl, using fallback');
                     setPreviewUrl(selectedTemplate.samplePdfUrl); // Fallback
                 }
             } catch (error) {
-                console.error('Failed to get signed preview URL:', error);
-                setPreviewUrl(selectedTemplate.samplePdfUrl); // Fallback
+                console.error('❌ Failed to get signed preview URL:', error);
+                // Fallback to the property if it exists
+                if (selectedTemplate?.samplePdfUrl) {
+                    setPreviewUrl(selectedTemplate.samplePdfUrl);
+                }
             } finally {
                 setLoadingPreview(false);
             }
         };
 
         fetchPreviewUrl();
-    }, [selectedTemplate]);
+    }, [selectedTemplate, getToken]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -184,7 +203,8 @@ const GenerateWorksheet = () => {
                 formData.append('headerImage', file);
 
                 console.log('📤 Uploading header to profile...');
-                await api.uploadHeader(formData);
+                const token = await getToken();
+                await api.uploadHeader(formData, token);
                 console.log('✅ Header saved to profile!');
 
                 // Refresh user profile to show the new stored header
@@ -198,7 +218,7 @@ const GenerateWorksheet = () => {
                 toast.error('Failed to save header permanently');
             }
         }
-    }, [refreshProfile]);
+    }, [refreshProfile, getToken]);
 
     const removeHeaderImage = () => {
         if (headerImage) {
@@ -227,6 +247,11 @@ const GenerateWorksheet = () => {
 
         if (!formData.syllabus.trim()) {
             toast.error('Please enter syllabus scope');
+            return;
+        }
+
+        if (!selectedTemplate || !selectedTemplate._id) {
+            toast.error('Please select a template');
             return;
         }
 
@@ -260,7 +285,21 @@ const GenerateWorksheet = () => {
             // For now, let's assume we need to update api.js or force header here if possible, 
             // but standard axios handles FormData automatically.
 
-            const response = await api.generateWorksheet(data);
+            // but standard axios handles FormData automatically.
+
+            // Debug logging
+            console.log('🚀 Generating Worksheet with Data:');
+            for (let pair of data.entries()) {
+                console.log(pair[0] + ': ' + pair[1]);
+            }
+            if (selectedTemplate) {
+                console.log('Selected Template ID:', selectedTemplate._id);
+            } else {
+                console.warn('⚠️ No template selected!');
+            }
+
+            const token = await getToken();
+            const response = await api.generateWorksheet(data, token);
 
             setCurrentWorksheet(response.data.worksheet);
             toast.success('Worksheet generated successfully!');
@@ -315,16 +354,19 @@ const GenerateWorksheet = () => {
                                             <p>Loading preview...</p>
                                         </div>
                                     ) : previewUrl ? (
-                                        <iframe
-                                            src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`}
-                                            style={{
-                                                width: '100%',
-                                                height: '100%',
-                                                border: 'none',
-                                                display: 'block'
-                                            }}
-                                            title="Template Preview"
-                                        />
+                                        <>
+                                            {console.log('📄 Rendering Preview URL:', previewUrl)}
+                                            <iframe
+                                                src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`}
+                                                style={{
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    border: 'none',
+                                                    display: 'block'
+                                                }}
+                                                title="Template Preview"
+                                            />
+                                        </>
                                     ) : (
                                         <div className="absolute inset-0 flex flex-col items-center justify-center text-secondary p-6 text-center">
                                             <FileText size={48} className="mb-3 opacity-20" />
@@ -404,8 +446,15 @@ const GenerateWorksheet = () => {
                                                         <p className="text-sm text-secondary">
                                                             {template.university} • {template.subject} • {template.level}
                                                         </p>
-                                                        <p className="text-xs text-tertiary mt-1">
-                                                            Used {template.usageCount} times • {template.sectionsOrder?.length} sections
+                                                        <p className="text-xs text-tertiary mt-1 flex items-center gap-2">
+                                                            {template.usageCount > 0 ? (
+                                                                <span>Used {template.usageCount} times</span>
+                                                            ) : (
+                                                                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-[10px] font-medium border border-green-200">
+                                                                    New
+                                                                </span>
+                                                            )}
+                                                            <span>• {template.sectionsOrder?.length} sections</span>
                                                         </p>
                                                     </div>
                                                     {selectedTemplate?._id === template._id && (
@@ -480,7 +529,7 @@ const GenerateWorksheet = () => {
                                 </div>
 
                                 {/* Difficulty */}
-                                <div className="input-group">
+                                {/* <div className="input-group">
                                     <label className="input-label">
                                         Difficulty Level
                                     </label>
@@ -494,7 +543,7 @@ const GenerateWorksheet = () => {
                                         <option value="medium">Medium - Intermediate complexity</option>
                                         <option value="hard">Hard - Advanced topics and complex problems</option>
                                     </select>
-                                </div>
+                                </div> */}
 
                                 <div className="input-group">
                                     <label className="input-label">

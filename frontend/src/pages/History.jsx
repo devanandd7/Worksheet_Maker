@@ -11,22 +11,22 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 
+import { useAuth } from '../context/AuthContext';
+
 const History = () => {
     const navigate = useNavigate();
+    const { getToken } = useAuth();
     const [worksheets, setWorksheets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        fetchHistory();
-    }, []);
-
-    const fetchHistory = async () => {
+    const fetchHistory = React.useCallback(async () => {
         try {
             // direct axios call if api service wrapper is not ready yet, 
             // but usually api.js has a generic get or specific method.
             // Assuming api.getWorksheetHistory() or api.get('/worksheets/history')
-            const response = await api.getWorksheetHistory();
+            const token = await getToken();
+            const response = await api.getWorksheetHistory(1, 10, token);
             setWorksheets(response.data.worksheets);
             setLoading(false);
         } catch (err) {
@@ -34,7 +34,11 @@ const History = () => {
             setError('Failed to load history. Please try again.');
             setLoading(false);
         }
-    };
+    }, [getToken]);
+
+    useEffect(() => {
+        fetchHistory();
+    }, [fetchHistory]);
 
     const handleDownload = (e, url, topic) => {
         e.preventDefault();

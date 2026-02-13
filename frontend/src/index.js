@@ -5,28 +5,37 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { WorksheetProvider } from './context/WorksheetContext';
 import { ToastContainer } from 'react-toastify';
+import { ClerkProvider } from '@clerk/clerk-react';
 import 'react-toastify/dist/ReactToastify.css';
 import 'react-quill/dist/quill.snow.css';
+
+const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+
+if (!clerkPubKey) {
+    console.error('Missing Clerk Publishable Key! Add REACT_APP_CLERK_PUBLISHABLE_KEY to your .env file');
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <React.StrictMode>
-        <AuthProvider>
-            <WorksheetProvider>
-                <App />
-                <ToastContainer
-                    position="top-right"
-                    autoClose={3000}
-                    hideProgressBar={false}
-                    newestOnTop
-                    closeOnClick
-                    rtl={false}
-                    pauseOnFocusLoss
-                    draggable
-                    pauseOnHover
-                    theme="light"
-                />
-            </WorksheetProvider>
-        </AuthProvider>
+        <ClerkProvider publishableKey={clerkPubKey}>
+            <AuthProvider>
+                <WorksheetProvider>
+                    <App />
+                    <ToastContainer
+                        position="top-right"
+                        autoClose={3000}
+                        hideProgressBar={false}
+                        newestOnTop
+                        closeOnClick
+                        rtl={false}
+                        pauseOnFocusLoss
+                        draggable
+                        pauseOnHover
+                        theme="light"
+                    />
+                </WorksheetProvider>
+            </AuthProvider>
+        </ClerkProvider>
     </React.StrictMode>
 );

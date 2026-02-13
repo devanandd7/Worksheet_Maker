@@ -1,19 +1,19 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import { Analytics } from '@vercel/analytics/react';
 
 // Pages
 import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import { ProfileSetup, Dashboard, UploadSample, StructurePreview, GenerateWorksheet, WorksheetPreview, Download, History } from './pages/index';
+import ProfileSetup from './pages/ProfileSetup';
+import { Dashboard, UploadSample, StructurePreview, GenerateWorksheet, WorksheetPreview, Download, History } from './pages/index';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, loading } = useAuth();
+    const { loading, isClerkSignedIn } = useAuth();
 
     if (loading) {
         return (
@@ -23,8 +23,7 @@ const ProtectedRoute = ({ children }) => {
         );
     }
 
-    //here  we need to set clerk auth
-    return isAuthenticated ? (
+    return isClerkSignedIn ? (
         <>
             <Navbar />
             <main className="main-content">
@@ -32,10 +31,8 @@ const ProtectedRoute = ({ children }) => {
             </main>
             <Footer />
         </>
-    ) : <Navigate to="/login" />;
+    ) : <RedirectToSignIn />;
 };
-
-
 
 function App() {
     return (
@@ -44,13 +41,20 @@ function App() {
             <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Landing />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
+
+                {/* Clerk-protected Profile Setup */}
+                <Route path="/profile-setup" element={
+                    <>
+                        <SignedIn>
+                            <ProfileSetup />
+                        </SignedIn>
+                        <SignedOut>
+                            <RedirectToSignIn />
+                        </SignedOut>
+                    </>
+                } />
 
                 {/* Protected Routes */}
-                <Route path="/profile-setup" element={
-                    <ProtectedRoute><ProfileSetup /></ProtectedRoute>
-                } />
                 <Route path="/dashboard" element={
                     <ProtectedRoute><Dashboard /></ProtectedRoute>
                 } />

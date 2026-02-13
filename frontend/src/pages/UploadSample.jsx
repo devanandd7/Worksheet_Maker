@@ -13,7 +13,7 @@ const UploadSample = () => {
     const [uploadedData, setUploadedData] = useState(null);
     const [analysisResult, setAnalysisResult] = useState(null);
     const { setCurrentTemplate } = useWorksheet();
-    const { user } = useAuth();
+    const { user, getToken } = useAuth();
     const navigate = useNavigate();
 
     const handleFileSelect = (e) => {
@@ -44,7 +44,8 @@ const UploadSample = () => {
         formData.append('pdf', file);
 
         try {
-            const response = await api.uploadSamplePDF(formData);
+            const token = await getToken();
+            const response = await api.uploadSample(formData, token);
 
             // Backend returns: {success: true, data: {pdfUrl, extractedText, pages}}
             // Axios wraps in response.data, so access response.data.data.pdfUrl
@@ -86,10 +87,11 @@ const UploadSample = () => {
 
         setAnalyzing(true);
         try {
+            const token = await getToken();
             const response = await api.analyzeTemplate({
                 pdfUrl: pdfUrl || uploadedData?.pdfUrl,
                 extractedText: extractedText || uploadedData?.extractedText
-            });
+            }, token);
 
             // Backend returns: { success: true, data: { sections, style, ... } }
             setAnalysisResult(response.data.data);
@@ -115,16 +117,22 @@ const UploadSample = () => {
                 pdfUrl: uploadedData.pdfUrl
             };
 
+            const token = await getToken();
             console.log('Saving template with data:', saveData);
-            const response = await api.saveTemplate(saveData);
+            const response = await api.saveTemplate(saveData, token);
 
             setCurrentTemplate(response.data.template);
             toast.success('Template saved successfully!');
 
-            // Navigate to structure preview
+            // Clear validation cache so new template shows up in generation list
+            if (user?._id) {
+                localStorage.removeItem(`worksheet_template_cache_${user._id}`);
+            }
+
+            // Redirect to generate page
             setTimeout(() => {
                 navigate('/generate');
-            }, 1000);
+            }, 1500);
         } catch (error) {
             toast.error(error.response?.data?.message || 'Failed to save template');
             console.error('Save template error:', error);

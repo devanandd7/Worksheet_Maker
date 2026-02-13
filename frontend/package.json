@@ -4,6 +4,7 @@
     "description": "Frontend for Worksheet AI System",
     "private": true,
     "dependencies": {
+        "@clerk/clerk-react": "^5.60.0",
         "@vercel/analytics": "^1.6.1",
         "axios": "^1.6.2",
         "lucide-react": "^0.294.0",

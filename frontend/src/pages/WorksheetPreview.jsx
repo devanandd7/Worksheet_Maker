@@ -12,12 +12,14 @@ import {
     ArrowLeft,
     Printer
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import './WorksheetPreview.css';
 
 const WorksheetPreview = () => {
     const { id } = useParams();
     const { currentWorksheet, setCurrentWorksheet } = useWorksheet();
+    const { getToken } = useAuth(); // Get auth token
     const navigate = useNavigate();
 
     const [worksheet, setWorksheet] = useState(null);
@@ -42,7 +44,8 @@ const WorksheetPreview = () => {
             // Case 2: Fetch from API (Refresh or direct link)
             try {
                 setLoading(true);
-                const response = await api.getWorksheetById(id);
+                const token = await getToken();
+                const response = await api.getWorksheetById(id, token);
                 const fetchedWorksheet = response.data.worksheet;
 
                 setWorksheet(fetchedWorksheet);
@@ -58,7 +61,7 @@ const WorksheetPreview = () => {
         };
 
         loadWorksheet();
-    }, [id, currentWorksheet, navigate, setCurrentWorksheet]);
+    }, [id, currentWorksheet, navigate, setCurrentWorksheet, getToken]);
 
 
 
@@ -71,12 +74,13 @@ const WorksheetPreview = () => {
 
         setSaving(true);
         try {
+            const token = await getToken();
             const response = await api.updateWorksheet(worksheet._id, {
                 content: {
                     ...worksheet.content,
                     [section]: editedContent[section]
                 }
-            });
+            }, token);
 
             setWorksheet(response.data.worksheet);
             setCurrentWorksheet(response.data.worksheet);
@@ -120,7 +124,8 @@ const WorksheetPreview = () => {
         setGeneratingPDF(true);
         try {
             console.log('Sending PDF generate request for ID:', worksheet._id);
-            const response = await api.generateWorksheetPDF(worksheet._id);
+            const token = await getToken();
+            const response = await api.generateWorksheetPDF(worksheet._id, token);
             console.log('PDF Generated Response:', response.data);
 
             // Backend returns: { success: true, message: '...', pdfUrl: '...', pdfBase64: '...' }
@@ -187,7 +192,7 @@ const WorksheetPreview = () => {
         } finally {
             setGeneratingPDF(false);
         }
-    }, [worksheet, setCurrentWorksheet, navigate]);
+    }, [worksheet, setCurrentWorksheet, navigate, getToken]);
 
     // Handle auto-gen only after worksheet is loaded
     useEffect(() => {
@@ -203,6 +208,7 @@ const WorksheetPreview = () => {
         if (!worksheet) return;
 
         try {
+            const token = await getToken();
             const response = await api.regenerateSection(worksheet._id, {
                 section,
                 currentContent: worksheet.content[section],
@@ -210,7 +216,7 @@ const WorksheetPreview = () => {
                     topic: worksheet.topic,
                     syllabus: worksheet.syllabus
                 }
-            });
+            }, token);
 
             const updatedContent = {
                 ...worksheet.content,

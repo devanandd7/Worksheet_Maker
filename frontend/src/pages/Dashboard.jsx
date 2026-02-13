@@ -8,13 +8,14 @@ import {
     ArrowRight,
     GraduationCap,
     BookOpen,
-    FileText
+    FileText,
+    AlertCircle
 } from 'lucide-react';
 import './Dashboard.css';
 import '../components/Navbar.css'; // Re-use general styles if needed
 
 const Dashboard = () => {
-    const { user } = useAuth();
+    const { user, clerkUser } = useAuth();
     const [greeting, setGreeting] = useState('');
 
     useEffect(() => {
@@ -29,7 +30,7 @@ const Dashboard = () => {
             {/* Header Section */}
             <div className="dashboard-header animate-slide-up">
                 <div className="dashboard-welcome">
-                    <h1>{greeting}, {user?.name?.split(' ')[0] || 'Student'}! 👋</h1>
+                    <h1>{greeting}, {(user?.name || clerkUser?.firstName || 'Student').split(' ')[0]}! 👋</h1>
                     <p className="dashboard-subtitle">
                         Ready to create some amazing worksheets today?
                     </p>
@@ -41,6 +42,30 @@ const Dashboard = () => {
                     </Link>
                 </div>
             </div>
+
+            {/* Profile Warning Banner */}
+            {user && user.profileCompletion && user.profileCompletion.percentage < 80 && (
+                <div className="profile-warning-banner animate-slide-up delay-100" style={{
+                    background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)',
+                    borderLeft: '4px solid #f59e0b',
+                    padding: '1rem 1.5rem',
+                    marginBottom: '2rem',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    color: '#92400e'
+                }}>
+                    <AlertCircle size={24} color="#d97706" />
+                    <div style={{ flex: 1 }}>
+                        <strong>Complete your profile!</strong> You are missing some details.
+                        Complete your profile to get personalized worksheets.
+                    </div>
+                    <Link to="/profile-setup" className="btn btn-sm btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                        Complete Now
+                    </Link>
+                </div>
+            )}
 
             {/* Main Action Cards */}
             <div className="overview-grid">

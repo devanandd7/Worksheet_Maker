@@ -14,12 +14,12 @@ import {
 import './Navbar.css';
 
 const Navbar = () => {
-    const { user, logout } = useAuth();
+    const { user, logout, clerkUser } = useAuth();
     const navigate = useNavigate();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         navigate('/');
     };
 
@@ -68,7 +68,7 @@ const Navbar = () => {
                             <User size={14} />
                         </div>
                         <span className="user-name">
-                            {user?.name || 'User'}
+                            {user?.name || clerkUser?.firstName || 'User'}
                         </span>
                     </div>
                     <button

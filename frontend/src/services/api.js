@@ -10,101 +10,112 @@ const api = axios.create({
     }
 });
 
-// Add token to requests
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
-
-// Handle responses
-api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-        }
-        return Promise.reject(error);
-    }
-);
+// No global token interceptor - tokens passed per request
 
 // Auth APIs
 export const authAPI = {
-    register: (userData) => api.post('/auth/register', userData),
-    login: (credentials) => api.post('/auth/login', credentials),
-    getProfile: () => api.get('/auth/profile'),
-    updateProfile: (data) => api.put('/auth/profile', data),
-    uploadHeader: (formData) => api.post('/auth/upload-header', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+    syncProfile: (data, token) => api.post('/auth/sync-profile', data, {
+        headers: { Authorization: `Bearer ${token}` }
     }),
-    deleteHeader: () => api.delete('/auth/delete-header')
+    getProfile: (token) => api.get('/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    updateProfile: (data, token) => api.put('/auth/profile', data, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    uploadHeader: (formData, token) => api.post('/auth/upload-header', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+        }
+    }),
+    deleteHeader: (token) => api.delete('/auth/delete-header', {
+        headers: { Authorization: `Bearer ${token}` }
+    })
 };
 
 // Template APIs
 export const templateAPI = {
-    uploadSample: (formData) => api.post('/templates/upload-sample', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+    uploadSample: (formData, token) => api.post('/templates/upload-sample', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+        }
     }),
-    analyze: (pdfUrl, extractedText) => api.post('/templates/analyze', { pdfUrl, extractedText }),
-    save: (templateData) => api.post('/templates/save', templateData),
-    getSuggestions: (subject) => api.get('/templates/suggestions', { params: { subject } }),
-    getById: (id) => api.get(`/templates/${id}`),
-    getSignedUrl: (id) => api.get(`/templates/${id}/signed-url`)
+    analyzeTemplate: (data, token) => api.post('/templates/analyze', data, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    saveTemplate: (data, token) => api.post('/templates/save', data, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    getSuggestions: (subject, token) => api.get(`/templates/suggestions?subject=${subject}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    getById: (id, token) => api.get(`/templates/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    getSignedUrl: (id, token) => api.get(`/templates/${id}/signed-url`, {
+        headers: { Authorization: `Bearer ${token}` }
+    })
 };
 
 // Worksheet APIs
 export const worksheetAPI = {
-    generate: (data) => {
-        // Check if data is FormData to set correct headers
-        const isFormData = data instanceof FormData;
-        return api.post('/worksheets/generate', data, {
-            headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : {},
-            params: { mode: 'sync' }
-        });
-    },
-    uploadImage: (worksheetId, formData) => api.post(`/worksheets/${worksheetId}/upload-image`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+    generate: (formData, token) => api.post('/worksheets/generate', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+        },
+        params: { mode: 'sync' }
     }),
-    update: (worksheetId, data) => api.put(`/worksheets/${worksheetId}`, data),
-    generatePDF: (worksheetId) => api.post(`/worksheets/${worksheetId}/generate-pdf`),
-    getHistory: (page = 1, limit = 10) => api.get('/worksheets/history', { params: { page, limit } }),
-    getById: (id) => api.get(`/worksheets/${id}`),
-    regenerateSection: (worksheetId, data) => api.post(`/worksheets/${worksheetId}/regenerate-section`, data)
+    uploadImage: (id, formData, token) => api.post(`/worksheets/${id}/upload-image`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+        }
+    }),
+    update: (id, data, token) => api.put(`/worksheets/${id}`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    generatePDF: (id, token) => api.post(`/worksheets/${id}/generate-pdf`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    getHistory: (page = 1, limit = 10, token) => api.get(`/worksheets/history?page=${page}&limit=${limit}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    getById: (id, token) => api.get(`/worksheets/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    regenerateSection: (id, data, token) => api.post(`/worksheets/${id}/regenerate-section`, data, {
+        headers: { Authorization: `Bearer ${token}` }
+    })
 };
 
 // Unified API object for easier imports
 const unifiedAPI = {
     // Auth
-    register: (userData) => authAPI.register(userData),
-    login: (credentials) => authAPI.login(credentials),
-    getProfile: () => authAPI.getProfile(),
-    updateProfile: (data) => authAPI.updateProfile(data),
-    uploadHeader: (formData) => authAPI.uploadHeader(formData),
-    deleteHeader: () => authAPI.deleteHeader(),
+    syncProfile: authAPI.syncProfile,
+    getProfile: authAPI.getProfile,
+    updateProfile: authAPI.updateProfile,
+    uploadHeader: authAPI.uploadHeader,
+    deleteHeader: authAPI.deleteHeader,
 
     // Templates
-    uploadSamplePDF: (formData) => templateAPI.uploadSample(formData),
-    analyzeTemplate: (data) => templateAPI.analyze(data.pdfUrl, data.extractedText),
-    saveTemplate: (templateData) => templateAPI.save(templateData),
-    getTemplateSuggestions: (subject) => templateAPI.getSuggestions(subject),
-    getTemplateById: (id) => templateAPI.getById(id),
-    getTemplateSignedUrl: (id) => templateAPI.getSignedUrl(id),
+    uploadSample: templateAPI.uploadSample,
+    analyzeTemplate: templateAPI.analyzeTemplate,
+    saveTemplate: templateAPI.saveTemplate,
+    getTemplateSuggestions: templateAPI.getSuggestions,
+    getTemplateById: templateAPI.getById,
+    getTemplateSignedUrl: templateAPI.getSignedUrl,
 
     // Worksheets
-    generateWorksheet: (data) => worksheetAPI.generate(data),
-    uploadWorksheetImage: (worksheetId, formData) => worksheetAPI.uploadImage(worksheetId, formData),
-    updateWorksheet: (worksheetId, data) => worksheetAPI.update(worksheetId, data),
-    generateWorksheetPDF: (worksheetId) => worksheetAPI.generatePDF(worksheetId),
-    getWorksheetHistory: (page, limit) => worksheetAPI.getHistory(page, limit),
-    getWorksheetById: (id) => worksheetAPI.getById(id),
-    regenerateSection: (worksheetId, data) => worksheetAPI.regenerateSection(worksheetId, data)
+    generateWorksheet: worksheetAPI.generate,
+    uploadWorksheetImage: worksheetAPI.uploadImage,
+    updateWorksheet: worksheetAPI.update,
+    generateWorksheetPDF: worksheetAPI.generatePDF,
+    getWorksheetHistory: worksheetAPI.getHistory,
+    getWorksheetById: worksheetAPI.getById,
+    regenerateWorksheetSection: worksheetAPI.regenerateSection
 };
 
 export default unifiedAPI;

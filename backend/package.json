@@ -19,6 +19,7 @@
   "author": "CrossEye",
   "license": "ISC",
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
     "@google/genai": "^1.40.0",
     "ast-types": "^0.14.2",
     "axios": "^1.6.2",

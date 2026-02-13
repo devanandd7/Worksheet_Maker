@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { SignInButton, SignUpButton, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { useAuth } from '../context/AuthContext';
 import { FileText, Sparkles, Zap, Shield, Clock, Users, Image } from 'lucide-react';
 import './Landing.css';
 
 const Landing = () => {
-    const { isAuthenticated } = useAuth();
+    const { isClerkSignedIn } = useAuth();
     const navigate = useNavigate();
 
-    React.useEffect(() => {
-        if (isAuthenticated) {
+    // Auto-redirect authenticated users to dashboard
+    useEffect(() => {
+        if (isClerkSignedIn) {
             navigate('/dashboard');
         }
-    }, [isAuthenticated, navigate]);
+    }, [isClerkSignedIn, navigate]);
 
     return (
         <div className="landing-page">
@@ -25,8 +27,17 @@ const Landing = () => {
                             <span>Worksheet Maker</span>
                         </div>
                         <nav className="nav-links">
-                            <Link to="/login" className="btn btn-secondary btn-sm">Login</Link>
-                            <Link to="/register" className="btn btn-primary btn-sm">Get Started</Link>
+                            <SignedOut>
+                                <SignInButton mode="modal">
+                                    <button className="btn btn-secondary btn-sm">Login</button>
+                                </SignInButton>
+                                <SignUpButton mode="modal" afterSignUpUrl="/profile-setup">
+                                    <button className="btn btn-primary btn-sm">Get Started</button>
+                                </SignUpButton>
+                            </SignedOut>
+                            <SignedIn>
+                                <Link to="/dashboard" className="btn btn-primary btn-sm">Go to Dashboard</Link>
+                            </SignedIn>
                         </nav>
                     </div>
                 </div>
@@ -47,13 +58,23 @@ const Landing = () => {
                             Perfect for students who value their time and academic integrity.
                         </p>
                         <div className="hero-cta">
-                            <Link to="/register" className="btn btn-primary btn-lg">
-                                <Sparkles size={20} />
-                                Start Creating Free
-                            </Link>
-                            <Link to="/login" className="btn btn-outline btn-lg">
-                                Sign In
-                            </Link>
+                            <SignedOut>
+                                <SignUpButton mode="modal" afterSignUpUrl="/profile-setup">
+                                    <button className="btn btn-primary btn-lg">
+                                        <Sparkles size={20} />
+                                        Start Creating Free
+                                    </button>
+                                </SignUpButton>
+                                <SignInButton mode="modal">
+                                    <button className="btn btn-outline btn-lg">Sign In</button>
+                                </SignInButton>
+                            </SignedOut>
+                            <SignedIn>
+                                <Link to="/dashboard" className="btn btn-primary btn-lg">
+                                    <Sparkles size={20} />
+                                    Go to Dashboard
+                                </Link>
+                            </SignedIn>
                         </div>
                     </div>
                 </div>
@@ -173,9 +194,14 @@ const Landing = () => {
                     <p className="cta-description">
                         Join students who are already using AI to create better worksheets faster.
                     </p>
-                    <Link to="/register" className="btn btn-primary btn-lg">
-                        Get Started - It's Free
-                    </Link>
+                    <SignedOut>
+                        <SignUpButton mode="modal" afterSignUpUrl="/profile-setup">
+                            <button className="btn btn-primary btn-lg">Get Started - It's Free</button>
+                        </SignUpButton>
+                    </SignedOut>
+                    <SignedIn>
+                        <Link to="/dashboard" className="btn btn-primary btn-lg">Go to Dashboard</Link>
+                    </SignedIn>
                 </div>
             </section>
 

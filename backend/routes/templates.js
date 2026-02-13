@@ -241,10 +241,21 @@ router.get('/suggestions', auth, async (req, res) => {
         const user = await User.findById(req.userId);
         const { subject } = req.query;
 
+        console.log(`🔍 Fetching suggestions for user: ${user._id} (${user.email})`);
+        console.log(`🎓 Profile: ${user.university} | ${user.course}`);
+
         // Find matching templates
+        // Priority 1: Templates created by this user (regardless of metadata)
+        // Priority 2: Templates matching user's profile (University + Course)
         const query = {
-            university: user.university,
-            course: user.course,
+            $or: [
+                { userId: req.userId }, // My templates
+                {
+                    university: user.university,
+                    course: user.course, //,
+                    // userId: { $ne: req.userId } // System/Public templates (exclude mine to avoid dupes)
+                }
+            ],
             status: { $ne: 'invalid' } // Hide invalid templates
         };
 
@@ -252,9 +263,38 @@ router.get('/suggestions', auth, async (req, res) => {
             query.subject = subject;
         }
 
+        console.log('📋 Template Query:', JSON.stringify(query, null, 2));
+
+
+        // Better sort: CreatedAt for mine? 
+        // Let's sort by: User's templates (how to sort by 'isMine'?)
+        // We can't easily sort by derived field in Mongo without aggregation.
+        // Simple approach: Sort by createdAt -1 (newest first).
+        // User templates are likely newer.
+        // OR: We can just return them and let frontend sort, but 20 limit might cut them off.
+        // Let's simpler query:
+
+        // Valid query for Mongo:
+        /*
         const templates = await Template.find(query)
-            .sort({ usageCount: -1, createdAt: -1 })
-            .limit(5);
+            .sort({ createdAt: -1 }) // Newest first
+            .limit(50); // Increased limit to ensure my templates are seen
+        */
+
+        // Let's stick to the $or query but increase limit significantly
+
+        const templates = await Template.find({
+            $or: [
+                { userId: req.userId },
+                {
+                    university: user.university,
+                    course: user.course
+                }
+            ],
+            status: { $ne: 'invalid' }
+        })
+            .sort({ createdAt: -1 }) // Show newest first (likely user's just uploaded ones)
+            .limit(50);
 
         res.json({
             success: true,
@@ -343,10 +383,11 @@ router.get('/:id/signed-url', auth, async (req, res) => {
                     });
                 }
 
-                const generatedUrl = cloudinaryService.getSignedUrl(publicId);
-                if (generatedUrl) {
-                    signedUrl = generatedUrl;
-                }
+                // Since we upload with access_mode: 'public', we can just use the public URL.
+                // Google Docs Viewer works best with standard public URLs.
+                // We don't need to sign it as 'authenticated'.
+                signedUrl = template.samplePdfUrl;
+                console.log('✅ Template exists, returning public URL for preview:', signedUrl);
             }
         }
 
