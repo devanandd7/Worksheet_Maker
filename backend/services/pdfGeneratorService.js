@@ -222,10 +222,10 @@ class PDFGeneratorService {
           <span class="header-label">Student Name:</span> ${this.cleanValue(user.name)}
         </div>
         <div class="detail-row">
-          <span class="header-label">Branch:</span> ${this.cleanValue(user.branch || "")}
+          <span class="header-label">Branch:</span> ${this.cleanValue(user.branch || user.course)}
         </div>
         <div class="detail-row">
-          <span class="header-label">Semester:</span> ${this.cleanValue(user.semester || "")}
+          <span class="header-label">Semester:</span> ${this.cleanValue(user.semester)}
         </div>
         <div class="detail-row">
           <span class="header-label">Subject Name:</span> ${this.cleanValue(worksheet.subject || user.defaultSubject)}
@@ -263,9 +263,7 @@ class PDFGeneratorService {
   ${this.renderCode(worksheet.content.code, images)}
   ${this.renderOutput(worksheet.content.output, images)}
   ${this.renderLearningOutcomes(worksheet.content.learningOutcome)}
-  ${this.renderSection('Conclusion', worksheet.content.conclusion, images, 'conclusion')}
-  
-  ${this.renderAdditionalImages(images, worksheet.content)}
+ 
 
 </body>
 </html>
