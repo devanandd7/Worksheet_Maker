@@ -1,0 +1,61 @@
+✅ Environment variables loaded successfully
+MongoDB Connected
+Testing with University: CU
+Public ID: worksheet-ai/universities/phw4nzyc45ydn6iv8aug
+University: CU
+Testing HTTP URL: http://res.cloudinary.com/dnpultjwg/image/upload/v1771004723/worksheet-ai/universities/phw4nzyc45ydn6iv8aug.pdf
+❌ [HTTP URL (Unsigned)] Failed: 401
+--- Inspecting Resource with Cloudinary Admin API ---
+✅ Found as IMAGE:
+{
+  "asset_id": "3a79ca301e873ba98b732e58b8432a7e",
+  "public_id": "worksheet-ai/universities/phw4nzyc45ydn6iv8aug",
+  "format": "pdf",
+  "version": 1771004723,
+  "resource_type": "image",
+  "type": "upload",
+  "created_at": "2026-02-13T17:45:23Z",
+  "bytes": 1445632,
+  "width": 612,
+  "height": 792,
+  "asset_folder": "worksheet-ai/universities",
+  "display_name": "phw4nzyc45ydn6iv8aug",
+  "access_mode": "public",
+  "url": "http://res.cloudinary.com/dnpultjwg/image/upload/v1771004723/worksheet-ai/universities/phw4nzyc45ydn6iv8aug.pdf",
+  "secure_url": "https://res.cloudinary.com/dnpultjwg/image/upload/v1771004723/worksheet-ai/universities/phw4nzyc45ydn6iv8aug.pdf",
+  "next_cursor": "2089c7f134ce56153d771c07f050026e4b0724627a8a711b7c848a3c4f978c8d",
+  "derived": [
+    {
+      "transformation": "/",
+      "transformation_signature": "6666cd76-f969-3646-9e7b-e39d750cc7d9",
+      "format": "pdf",
+      "bytes": 1445632,
+      "id": "b4f304366348d9f3508312e3dae10191",
+      "url": "http://res.cloudinary.com/dnpultjwg/image/upload/v1771004723/worksheet-ai/universities/phw4nzyc45ydn6iv8aug",
+      "secure_url": "https://res.cloudinary.com/dnpultjwg/image/upload/v1771004723/worksheet-ai/universities/phw4nzyc45ydn6iv8aug",
+      "extension": ""
+    }
+  ],
+  "rate_limit_allowed": 500,
+  "rate_limit_reset_at": "2026-02-13T20:00:00.000Z",
+  "rate_limit_remaining": 489
+}
+Test: Upload + Image + PDF (Signed, Versioned)
+❌ [Upload + Image + PDF (Signed, Versioned)] Failed: 401
+Test: Upload + Image + PDF (Signed, No Version)
+❌ [Upload + Image + PDF (Signed, No Version)] Failed: 401
+Test: Upload + Image (Signed, No Ver, No Fmt)
+❌ [Upload + Image (Signed, No Ver, No Fmt)] Failed: 401
+Test: Upload + Raw + PDF (Signed, Versioned)
+❌ [Upload + Raw + PDF (Signed, Versioned)] Failed: 404
+Test: Authenticated + Image + PDF (Signed, Versioned)
+❌ [Authenticated + Image + PDF (Signed, Versioned)] Failed: 404
+--- Attempting Test Upload (Authenticated) ---
+✅ Uploaded Test PDF: worksheet-ai/test/tvgtyl9c7slyxzvf7pj7
+Type: authenticated
+Testing Signed Authenticated URL: https://res.cloudinary.com/dnpultjwg/image/authenticated/s--KV9BNhZs--/v1771009896/worksheet-ai/test/tvgtyl9c7slyxzvf7pj7
+❌ [Signed Authenticated URL] Failed: 401
+Cleaned up test file.
+--- Testing private_download_url ---
+Testing Private Download URL: https://api.cloudinary.com/v1_1/dnpultjwg/image/download?timestamp=1771009899&public_id=worksheet-ai%2Funiversities%2Fphw4nzyc45ydn6iv8aug&format=pdf&type=upload&attachment=false&signature=a7b2c707fde76d1db50eff52accc9b3e6fd760b4&api_key=897744199135954
+✅ [Private Download URL] Success: 200

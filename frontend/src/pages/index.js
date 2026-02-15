@@ -10,6 +10,7 @@ export { default as History } from './History';
 export { default as UploadSample } from './UploadSample';
 export { default as GenerateWorksheet } from './GenerateWorksheet';
 export { default as WorksheetPreview } from './WorksheetPreview';
+export { default as AdminDashboard } from './AdminDashboard';
 
 // Placeholder exports for remaining pages
 export const StructurePreview = () => (

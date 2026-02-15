@@ -23,17 +23,17 @@ const userSchema = new mongoose.Schema({
     // Profile fields - now optional with defaults
     university: {
         type: String,
-        default: 'Not Set',
+        default: '',
         trim: true
     },
     course: {
         type: String,
-        default: 'Not Set',
+        default: '',
         trim: true
     },
     semester: {
         type: String,
-        default: 'Not Set',
+        default: '',
         trim: true
     },
     defaultSubject: {

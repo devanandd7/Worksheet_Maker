@@ -1,0 +1,6 @@
+✅ Environment variables loaded successfully
+Testing Private Download for: worksheet-ai/universities/phw4nzyc45ydn6iv8aug
+Testing Type: Upload: https://api.cloudinary.com/v1_1/dnpultjwg/image/download?timestamp=1771010038&public_id=worksheet-ai%2Funiversities%2Fphw4nzyc45ydn6iv8aug&format=pdf&type=upload&attachment=false&expires_at=1771013638&signature=1dbb062828d23ff287acadd660705b1ff1e03f68&api_key=897744199135954
+✅ [Type: Upload] Success: 200
+Testing Type: Authenticated: https://api.cloudinary.com/v1_1/dnpultjwg/image/download?timestamp=1771010040&public_id=worksheet-ai%2Funiversities%2Fphw4nzyc45ydn6iv8aug&format=pdf&type=authenticated&attachment=false&expires_at=1771013640&signature=82e8878894dd3e250dcb5d8da79ea63e0041d3cb&api_key=897744199135954
+❌ [Type: Authenticated] Failed: 404

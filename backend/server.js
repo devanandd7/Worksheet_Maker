@@ -12,6 +12,8 @@ import templateRoutes from './routes/templates.js';
 import worksheetRoutes from './routes/worksheets.js';
 import testRoutes from './routes/test.js';
 import testPdfRoutes from './routes/test-pdf.js';
+import adminRoutes from './routes/admin.js';
+import universityRoutes from './university/routes.js';
 
 const app = express();
 
@@ -47,6 +49,8 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/universities', universityRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api/worksheets', worksheetRoutes);
 app.use('/api/test', testRoutes);

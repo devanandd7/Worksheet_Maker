@@ -239,22 +239,33 @@ router.post('/save', auth, [
 router.get('/suggestions', auth, async (req, res) => {
     try {
         const user = await User.findById(req.userId);
-        const { subject } = req.query;
+        const { subject, university } = req.query;
 
         console.log(`🔍 Fetching suggestions for user: ${user._id} (${user.email})`);
         console.log(`🎓 Profile: ${user.university} | ${user.course}`);
+        if (university) console.log(`🏫 Explicit University Request: ${university}`);
 
         // Find matching templates
         // Priority 1: Templates created by this user (regardless of metadata)
-        // Priority 2: Templates matching user's profile (University + Course)
+        // Priority 2: Templates matching REQUESTED University (if provided) OR User's Profile (University + Course)
+
+        let matchCondition = {};
+        if (university) {
+            // Explicit lookup (e.g. Preset Selected)
+            // We don't filter by course strictly here because admin templates might be general
+            matchCondition = { university: university };
+        } else {
+            // Profile based lookup (Default)
+            matchCondition = {
+                university: user.university,
+                course: user.course
+            };
+        }
+
         const query = {
             $or: [
                 { userId: req.userId }, // My templates
-                {
-                    university: user.university,
-                    course: user.course, //,
-                    // userId: { $ne: req.userId } // System/Public templates (exclude mine to avoid dupes)
-                }
+                matchCondition           // Official/Shared templates
             ],
             status: { $ne: 'invalid' } // Hide invalid templates
         };

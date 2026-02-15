@@ -27,14 +27,14 @@ const Landing = () => {
                             <span>Worksheet Maker</span>
                         </div>
                         <nav className="nav-links">
-                            <SignedOut>
+                            {/* <SignedOut>
                                 <SignInButton mode="modal">
                                     <button className="btn btn-secondary btn-sm">Login</button>
                                 </SignInButton>
                                 <SignUpButton mode="modal" afterSignUpUrl="/profile-setup">
                                     <button className="btn btn-primary btn-sm">Get Started</button>
                                 </SignUpButton>
-                            </SignedOut>
+                            </SignedOut> */}
                             <SignedIn>
                                 <Link to="/dashboard" className="btn btn-primary btn-sm">Go to Dashboard</Link>
                             </SignedIn>
@@ -53,9 +53,9 @@ const Landing = () => {
                             <span className="gradient-text">Powered by AI</span>
                         </h1>
                         <p className="hero-description">
-                            Create free, university-specific, plagiarism-free worksheets in minutes.
+                            <b>Save 30+ Hours a Month. Invest Them in Your Skills.</b>
                             <br />
-                            Perfect for students who value their time and academic integrity.
+                            Create university-specific, plagiarism-free worksheets in minutes.
                         </p>
                         <div className="hero-cta">
                             <SignedOut>
@@ -65,9 +65,9 @@ const Landing = () => {
                                         Start Creating Free
                                     </button>
                                 </SignUpButton>
-                                <SignInButton mode="modal">
+                                {/* <SignInButton mode="modal">
                                     <button className="btn btn-outline btn-lg">Sign In</button>
-                                </SignInButton>
+                                </SignInButton> */}
                             </SignedOut>
                             <SignedIn>
                                 <Link to="/dashboard" className="btn btn-primary btn-lg">
@@ -108,8 +108,8 @@ const Landing = () => {
                             <div className="feature-icon">
                                 <Zap size={32} />
                             </div>
-                            <h3>Lightning Fast</h3>
-                            <p>Generate complete worksheets in under 2 minutes. Say goodbye to hours of manual work.</p>
+                            <h3>Save 30+ Hours Monthly</h3>
+                            <p>Generate complete worksheets in under 2 minutes. Say goodbye to hours of manual work and level up your skills.</p>
                         </div>
 
                         <div className="feature-card card">
@@ -190,7 +190,7 @@ const Landing = () => {
             {/* CTA Section */}
             <section className="cta-section">
                 <div className="container text-center">
-                    <h2 className="cta-title">Ready to Save 10+ Hours This Semester?</h2>
+                    <h2 className="cta-title">Save 30+ Hours This Month. Level Up Your Skills Today.</h2>
                     <p className="cta-description">
                         Join students who are already using AI to create better worksheets faster.
                     </p>

@@ -23,7 +23,7 @@ async function generateWorksheetLogic(params) {
     const {
         topic, subject, syllabus, difficulty, templateId,
         additionalInstructions, experimentNumber,
-        files, headerImageFile, userId
+        files, headerImageFile, userId, presetHeaderUrl, headerImageUrl // Added headerImageUrl
     } = params;
 
     // Get template or create default
@@ -79,22 +79,23 @@ async function generateWorksheetLogic(params) {
     const uploadedImages = (await Promise.all(uploadPromises)).filter(img => img !== null);
 
     // Use stored header image from user profile (or upload new one if provided)
-    let headerImageUrl = user.headerImageUrl; // Default to stored header
+    // PRIORITY: headerImageUrl (Frontend) > presetHeaderUrl (Legacy) > headerImageFile (Manual Upload) > user.headerImageUrl (Profile)
+    let finalHeaderImageUrl = headerImageUrl || presetHeaderUrl || user.headerImageUrl;
 
     // If user provides a new header, upload and update (but DON'T save to user model)
     // This allows one-time override without changing the stored header
-    if (headerImageFile) {
+    if (headerImageFile && !presetHeaderUrl && !headerImageUrl) {
         try {
-            console.log('⚠️ Temporary header override - not saving to profile');
+            console.log('⚠️ Uploading header image from file...');
             const headerUpload = await cloudinaryService.uploadImage(headerImageFile.buffer, userId, 'temp_headers');
-            headerImageUrl = headerUpload.url;
+            finalHeaderImageUrl = headerUpload.url;
         } catch (err) {
             console.error('Header image upload failed, using stored header:', err);
             // Fall back to stored header if upload fails
         }
     }
 
-    console.log(`📋 Using header image: ${headerImageUrl ? 'Yes' : 'No (using stored or none)'}`);
+    console.log(`📋 Using header image: ${finalHeaderImageUrl ? 'Yes (' + finalHeaderImageUrl + ')' : 'No (using stored or none)'}`);
 
     // Generate variation seed
     const variationSeed = `${userId}_${Date.now()}_${Math.random()}`;
@@ -169,7 +170,7 @@ async function generateWorksheetLogic(params) {
         subject: subject || user.defaultSubject || template.subject,
         syllabus,
         difficulty: difficulty || 'medium',
-        headerImageUrl,
+        headerImageUrl: finalHeaderImageUrl,
         content: {
             mainQuestionTitle: generatedContent.mainQuestionTitle || '',
             questionParts: generatedContent.questionParts || [],
@@ -259,12 +260,15 @@ router.post('/generate', auth, upload.fields([{ name: 'images', maxCount: 5 }, {
             difficulty,
             templateId,
             additionalInstructions = '',
-            experimentNumber
+            experimentNumber,
+            presetHeaderUrl,
+            headerImageUrl // Extract from body
         } = req.body;
 
         console.log('📝 Generate Worksheet Request:', {
             body: req.body,
-            files: req.files ? Object.keys(req.files) : 'No files'
+            files: req.files ? Object.keys(req.files) : 'No files',
+            headerImageUrl // Log it
         });
 
         const files = (req.files && req.files['images']) ? req.files['images'] : [];
@@ -320,7 +324,9 @@ router.post('/generate', auth, upload.fields([{ name: 'images', maxCount: 5 }, {
                     const worksheet = await generateWorksheetLogic({
                         topic, subject, syllabus, difficulty, templateId,
                         additionalInstructions, experimentNumber,
-                        files, headerImageFile, userId: req.userId
+                        files, headerImageFile, userId: req.userId,
+                        presetHeaderUrl,
+                        headerImageUrl // Pass to logic
                     });
 
                     console.log(`✅ Worksheet ${worksheet._id} generated successfully in background`);
@@ -349,7 +355,9 @@ router.post('/generate', auth, upload.fields([{ name: 'images', maxCount: 5 }, {
         const worksheet = await generateWorksheetLogic({
             topic, subject, syllabus, difficulty, templateId,
             additionalInstructions, experimentNumber,
-            files, headerImageFile, userId: req.userId
+            files, headerImageFile, userId: req.userId,
+            presetHeaderUrl,
+            headerImageUrl // Pass to logic
         });
 
         res.status(201).json({

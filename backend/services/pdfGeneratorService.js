@@ -99,7 +99,8 @@ class PDFGeneratorService {
     .header-image-container img {
       max-width: 100%;
       height: auto;
-      max-height: 100px;
+   
+  display: block;
     }
 
     /* Worksheet Heading */
@@ -221,10 +222,10 @@ class PDFGeneratorService {
           <span class="header-label">Student Name:</span> ${this.cleanValue(user.name)}
         </div>
         <div class="detail-row">
-          <span class="header-label">Branch:</span> ${this.cleanValue(user.branch || user.course)}
+          <span class="header-label">Branch:</span> ${this.cleanValue(user.branch || "")}
         </div>
         <div class="detail-row">
-          <span class="header-label">Semester:</span> ${this.cleanValue(user.semester)}
+          <span class="header-label">Semester:</span> ${this.cleanValue(user.semester || "")}
         </div>
         <div class="detail-row">
           <span class="header-label">Subject Name:</span> ${this.cleanValue(worksheet.subject || user.defaultSubject)}

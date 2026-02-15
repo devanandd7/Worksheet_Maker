@@ -1,15 +1,17 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorksheet } from '../context/WorksheetContext';
+import { useGlobalConfig } from '../context/GlobalConfigContext';
 import { toast } from 'react-toastify';
-import { Sparkles, Loader, FileText, AlertCircle, Zap, Image as ImageIcon, X } from 'lucide-react';
+import { Sparkles, Loader, FileText, AlertCircle, Zap, Image as ImageIcon, X, Info, Upload, CheckCircle, MessageCircle } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import api from '../services/api';
 
 const GenerateWorksheet = () => {
     const { user, refreshProfile, getToken } = useAuth();
     const { currentTemplate, setCurrentWorksheet } = useWorksheet();
+    const { universities, loading: loadingUniversities } = useGlobalConfig();
     const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
@@ -29,13 +31,23 @@ const GenerateWorksheet = () => {
     const [previewUrl, setPreviewUrl] = useState(null);
     const [loadingPreview, setLoadingPreview] = useState(false);
 
+    // University Presets
+    const [selectedUniversity, setSelectedUniversity] = useState(''); // '' means nothing selected, 'other' means manual
+    const [isPresetActive, setIsPresetActive] = useState(false);
+
     // Template caching constants
     const TEMPLATE_CACHE_KEY = user?._id ? `worksheet_template_cache_${user._id}` : 'worksheet_template_cache_guest';
     const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
-    const fetchTemplateSuggestions = useCallback(async (forceRefresh = false) => {
-        // Check cache first (unless force refresh)
-        if (!forceRefresh) {
+    // Use Ref to break dependency cycle for selectedTemplate
+    const selectedTemplateRef = useRef(selectedTemplate);
+    useEffect(() => {
+        selectedTemplateRef.current = selectedTemplate;
+    }, [selectedTemplate]);
+
+    const fetchTemplateSuggestions = useCallback(async (forceRefresh = false, universityOverride = null) => {
+        // If overriding university, skip cache check to ensure we get specific templates
+        if (!forceRefresh && !universityOverride) {
             try {
                 const cached = localStorage.getItem(TEMPLATE_CACHE_KEY);
                 if (cached) {
@@ -45,11 +57,12 @@ const GenerateWorksheet = () => {
                     if (age < CACHE_DURATION) {
                         console.log(`✅ Using cached templates (${Math.round(age / 1000 / 60)}min old)`);
                         setTemplates(data);
-                        if (data?.length > 0 && !selectedTemplate) {
+                        // Check ref instead of state dependency
+                        if (data?.length > 0 && !selectedTemplateRef.current) {
                             setSelectedTemplate(data[0]);
                         }
                         setLoadingTemplates(false);
-                        return;
+                        return data;
                     } else {
                         console.log('⏰ Cache expired, fetching fresh templates');
                     }
@@ -61,36 +74,168 @@ const GenerateWorksheet = () => {
 
         // Fetch from API
         try {
+            setLoadingTemplates(true);
             const token = await getToken();
-            const response = await api.getTemplateSuggestions(null, token);
+            // Pass universityOverride if present
+            const response = await api.getTemplateSuggestions(null, token, universityOverride);
             const templatesData = response.data.templates || [];
 
-            // Cache the data
-            try {
-                localStorage.setItem(TEMPLATE_CACHE_KEY, JSON.stringify({
-                    data: templatesData,
-                    timestamp: Date.now()
-                }));
-                console.log('📦 Templates cached for 30 minutes');
-            } catch (cacheErr) {
-                console.error('Failed to cache templates:', cacheErr);
+            // Only cache if NOT overriding (standard user suggestions)
+            if (!universityOverride) {
+                try {
+                    localStorage.setItem(TEMPLATE_CACHE_KEY, JSON.stringify({
+                        data: templatesData,
+                        timestamp: Date.now()
+                    }));
+                    console.log('📦 Templates cached for 30 minutes');
+                } catch (cacheErr) {
+                    console.error('Failed to cache templates:', cacheErr);
+                }
             }
 
             setTemplates(templatesData);
 
-            if (templatesData.length > 0 && !selectedTemplate) {
-                setSelectedTemplate(templatesData[0]);
+            // Auto-select first template if none selected or if we just switched context
+            if (templatesData.length > 0) {
+                // Always select first if overriding (Preset Mode)
+                // Check ref instead of state dependency
+                if (universityOverride || !selectedTemplateRef.current) {
+                    setSelectedTemplate(templatesData[0]);
+                }
+            } else if (universityOverride) {
+                // If preset mode but no templates found...
+                console.warn('⚠️ No templates found for this university override');
+                setSelectedTemplate(null);
             }
+            return templatesData;
         } catch (error) {
             console.error('Failed to fetch templates:', error);
+            return [];
         } finally {
             setLoadingTemplates(false);
         }
-    }, [selectedTemplate, CACHE_DURATION, getToken, TEMPLATE_CACHE_KEY]);
+    }, [CACHE_DURATION, getToken, TEMPLATE_CACHE_KEY]);
 
+    const handleUniversitySelect = useCallback(async (id, list = universities) => {
+        setSelectedUniversity(id);
+
+        if (id === 'other') {
+            // Reset to manual mode
+            setIsPresetActive(false);
+            setHeaderImage(null);
+            setUploadedImages([]);
+            setPreviewUrl(null);
+            setSelectedTemplate(null);
+            // Fetch default suggestions for user
+            fetchTemplateSuggestions(true);
+            return;
+        }
+
+        const uni = list.find(u => u._id === id);
+        if (uni) {
+            setIsPresetActive(true);
+
+            // Set Uploaded Images State (Visual feedback)
+            setLoadingTemplates(true);
+
+            // Use the Global Populated Template if available
+            if (uni.defaultTemplateId && typeof uni.defaultTemplateId === 'object') {
+                console.log('🎯 Using Global Populated Template:', uni.defaultTemplateId.templateName);
+
+                // Construct a full template object if some fields are missing in populate but needed for UI
+                // The populate in routes.js included: templateName sectionsOrder style level
+                // We might need 'subject' or others if the UI relies on them.
+                // However, the UI mainly checks _id and templateName.
+                // Let's ensure we have a valid object.
+
+                const templateObj = {
+                    ...uni.defaultTemplateId,
+                    university: uni.name, // Ensure context exists
+                    subject: 'General' // Default if not in populate
+                };
+
+                setTemplates([templateObj]);
+                setSelectedTemplate(templateObj);
+                setLoadingTemplates(false);
+            } else {
+                // Fallback: Fetch from API if for some reason it's not populated
+                console.warn('⚠️ Default template not populated, fetching from API...');
+                setTemplates([]);
+                try {
+                    const fetchedTemplates = await fetchTemplateSuggestions(true, uni.name);
+                    if (uni.defaultTemplateId) {
+                        // It might be an ID string here if populate failed
+                        const defaultTemplate = fetchedTemplates.find(t => t._id === uni.defaultTemplateId || t._id === uni.defaultTemplateId._id);
+                        if (defaultTemplate) {
+                            setSelectedTemplate(defaultTemplate);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load preset templates:', error);
+                    toast.error('Failed to load university templates');
+                }
+            }
+
+            // Set Preview URL (Admin Asset)
+            if (uni.sampleTemplateUrl) {
+                setPreviewUrl(uni.sampleTemplateUrl);
+            }
+        }
+    }, [universities, fetchTemplateSuggestions]);
+
+
+
+    // State to track if initial logic has run
+    const [initialCheckDone, setInitialCheckDone] = useState(false);
+
+    // Fetch Universities & Handle Initial Selection
+    const initPageLogic = useCallback(async () => {
+        console.log('🚀 Initializing Generate Page Logic (Global Config Mode)...');
+        try {
+            // Auto-select 'CU' (Chandigarh University) or similar if exists
+            const defaultUni = universities.find(u =>
+                u.name.toLowerCase().includes('chandigarh') ||
+                u.name.toLowerCase() === 'cu'
+            );
+
+            if (defaultUni) {
+                console.log('🏫 Auto-selecting University:', defaultUni.name);
+                // This will trigger template fetch/set for this university
+                await handleUniversitySelect(defaultUni._id, universities);
+            } else {
+                console.log('🏫 No default university found, loading generic templates.');
+                // If no default university, load generic templates
+                fetchTemplateSuggestions();
+            }
+        } catch (err) {
+            console.error('Error in page init:', err);
+            fetchTemplateSuggestions();
+        } finally {
+            setInitialCheckDone(true);
+        }
+    }, [universities, fetchTemplateSuggestions, handleUniversitySelect]);
+
+    // Run initialization ONCE when user is ready AND global config is loaded
     useEffect(() => {
-        fetchTemplateSuggestions();
-    }, [fetchTemplateSuggestions]);
+        if (user && !loadingUniversities && !initialCheckDone && universities.length > 0) {
+            initPageLogic();
+        } else if (user && !loadingUniversities && !initialCheckDone && universities.length === 0) {
+            // Edge case: No universities loaded at all
+            console.warn('⚠️ No universities found in global config.');
+            setInitialCheckDone(true);
+            fetchTemplateSuggestions();
+        }
+    }, [user, loadingUniversities, initialCheckDone, universities, initPageLogic]);
+
+    // Re-fetch generic templates ONLY if we are already in manual mode and user changes
+    // This prevents clobbering preset mode on re-renders
+    useEffect(() => {
+        if (initialCheckDone && (!selectedUniversity || selectedUniversity === 'other')) {
+            console.log('👤 User context changed, refreshing generic templates...');
+            fetchTemplateSuggestions();
+        }
+    }, [user?._id, initialCheckDone]); // Removed selectedUniversity dependency to avoid loop, handled by wait check
+
 
     useEffect(() => {
         if (currentTemplate) {
@@ -103,54 +248,85 @@ const GenerateWorksheet = () => {
         if (refreshProfile) {
             refreshProfile();
         }
-    }, [refreshProfile]);
+    }, []); // Run only once on mount
 
     // Fetch signed URL for preview
     useEffect(() => {
+        let isMounted = true;
 
         const fetchPreviewUrl = async () => {
-            if (!selectedTemplate) {
-                setPreviewUrl(null);
+            if (!selectedTemplate && !isPresetActive) {
+                if (isMounted) setPreviewUrl(null);
                 return;
             }
 
-            console.log('👀 Fetching preview for:', selectedTemplate.templateName);
-            console.log('🔗 Sample PDF URL from object:', selectedTemplate.samplePdfUrl);
+            console.log('👀 Fetching preview for:', isPresetActive ? 'Preset University' : selectedTemplate?.templateName);
 
-            setLoadingPreview(true);
+            if (isMounted) setLoadingPreview(true);
+
             try {
-                // If it's already a public URL (not Cloudinary) or we want to try direct first, we could.
-                if (!selectedTemplate.samplePdfUrl) {
-                    console.warn('❌ Template has no samplePdfUrl');
-                    setPreviewUrl(null);
+                // 1. Check for Preset Override FIRST
+                if (isPresetActive && selectedUniversity && universities.length > 0) {
+                    const currentUni = universities.find(u => u._id === selectedUniversity);
+                    if (currentUni && currentUni.sampleTemplateUrl) {
+                        console.log('📌 Using Preset Sample PDF:', currentUni.sampleTemplateUrl);
+                        if (isMounted) {
+                            setPreviewUrl(currentUni.sampleTemplateUrl);
+                            setLoadingPreview(false);
+                        }
+                        return;
+                    }
+                }
+
+                // 2. Standard Template Preview (Existing Logic)
+                if (!selectedTemplate) {
+                    if (isMounted) {
+                        setPreviewUrl(null);
+                        setLoadingPreview(false);
+                    }
                     return;
                 }
 
-                const token = await getToken();
-                const response = await api.getTemplateSignedUrl(selectedTemplate._id, token);
+                // If it's a Cloudinary URL, try to get a signed URL
+                if (selectedTemplate.samplePdfUrl && selectedTemplate.samplePdfUrl.includes('cloudinary')) {
+                    const token = await getToken();
+                    if (!token) {
+                        console.warn('⚠️ No token available for preview fetch');
+                        if (isMounted) setPreviewUrl(selectedTemplate.samplePdfUrl);
+                        return;
+                    }
 
-                console.log('📡 Signed URL API Response:', response.data);
+                    const response = await api.getTemplateSignedUrl(selectedTemplate._id, token);
 
-                if (response.data.success && response.data.signedUrl) {
-                    console.log('✅ Setting preview URL:', response.data.signedUrl);
-                    setPreviewUrl(response.data.signedUrl);
+                    if (isMounted) {
+                        if (response.data.success && response.data.signedUrl) {
+                            console.log('✅ Setting signed preview URL');
+                            setPreviewUrl(response.data.signedUrl);
+                        } else {
+                            console.warn('⚠️ API did not return signedUrl, using fallback');
+                            setPreviewUrl(selectedTemplate.samplePdfUrl);
+                        }
+                    }
                 } else {
-                    console.warn('⚠️ API did not return signedUrl, using fallback');
-                    setPreviewUrl(selectedTemplate.samplePdfUrl); // Fallback
+                    // Not a Cloudinary URL or no URL at all, use as is
+                    if (isMounted) setPreviewUrl(selectedTemplate.samplePdfUrl);
                 }
             } catch (error) {
                 console.error('❌ Failed to get signed preview URL:', error);
-                // Fallback to the property if it exists
-                if (selectedTemplate?.samplePdfUrl) {
+                if (isMounted && selectedTemplate?.samplePdfUrl) {
                     setPreviewUrl(selectedTemplate.samplePdfUrl);
                 }
             } finally {
-                setLoadingPreview(false);
+                if (isMounted) setLoadingPreview(false);
             }
         };
 
         fetchPreviewUrl();
-    }, [selectedTemplate, getToken]);
+
+        return () => {
+            isMounted = false;
+        };
+    }, [selectedTemplate, getToken, isPresetActive, selectedUniversity, universities]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -266,11 +442,28 @@ const GenerateWorksheet = () => {
             data.append('subject', formData.subject || user?.defaultSubject || 'General');
             if (selectedTemplate?._id) {
                 data.append('templateId', selectedTemplate._id);
+            } else {
+                console.error('❌ CRITICAL: Template selected but has NO ID:', selectedTemplate);
+                toast.error('Internal Error: Selected template is invalid. Please refresh.');
+                setGenerating(false);
+                return;
             }
             data.append('additionalInstructions', formData.additionalInstructions);
 
             // Append Header Image
-            if (headerImage) {
+            // Priority: Preset URL (if active) > Manual Upload (if not active, i.e., 'Other')
+            if (isPresetActive) {
+                // Find selected university object
+                const currentUni = universities.find(u => u._id === selectedUniversity);
+                if (currentUni && currentUni.headerImageUrl) {
+                    data.append('headerImageUrl', currentUni.headerImageUrl); // Updated key and property
+                    console.log('📌 Using Preset Header URL:', currentUni.headerImageUrl);
+                }
+                // Also support legacy key just in case, or we update backend to prefer headerImageUrl
+                // Let's stick to headerImageUrl and update backend.
+                // DO NOT append manual 'headerImage' file here, even if it exists in state
+            } else if (headerImage) {
+                // Manual Upload Mode ('Other')
                 data.append('headerImage', headerImage);
             }
 
@@ -328,65 +521,16 @@ const GenerateWorksheet = () => {
 
     return (
         <div className="page-container">
-            <div className={`container ${selectedTemplate ? 'container-lg' : 'container-sm'}`}>
-                <div className={selectedTemplate ? "grid grid-cols-1 lg:grid-cols-12 gap-6" : ""}>
+            <div className="container container-lg">
+                <div className="fade-in">
 
-                    {/* Preview Sidebar - Only visible when template selected */}
-                    {selectedTemplate && (
-                        <div className="lg:col-span-5 xl:col-span-4">
-                            <div className="sticky top-24 glass-panel p-4 rounded-xl fade-in">
-                                <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                                    <FileText size={20} className="text-primary" />
-                                    Template Preview
-                                </h3>
-
-                                <div
-                                    style={{
-                                        height: 'calc(100vh - 280px)',
-                                        minHeight: '700px',
-                                        width: '100%'
-                                    }}
-                                    className="bg-gray-100 rounded-lg overflow-hidden border border-border relative"
-                                >
-                                    {loadingPreview ? (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-secondary">
-                                            <Loader size={32} className="spinner mb-2" />
-                                            <p>Loading preview...</p>
-                                        </div>
-                                    ) : previewUrl ? (
-                                        <>
-                                            {console.log('📄 Rendering Preview URL:', previewUrl)}
-                                            <iframe
-                                                src={`https://docs.google.com/gview?url=${encodeURIComponent(previewUrl)}&embedded=true`}
-                                                style={{
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    border: 'none',
-                                                    display: 'block'
-                                                }}
-                                                title="Template Preview"
-                                            />
-                                        </>
-                                    ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-secondary p-6 text-center">
-                                            <FileText size={48} className="mb-3 opacity-20" />
-                                            <p>No preview available for this template</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="mt-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
-                                    <h4 className="font-medium text-primary text-sm mb-1">{selectedTemplate.templateName}</h4>
-                                    <p className="text-xs text-secondary">
-                                        {selectedTemplate.university} • {selectedTemplate.subject}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {/* Preview Sidebar - Only visible when template selected manually (not preset) */}
+                    {/* {selectedTemplate && !isPresetActive && (
+                        ... commented out code ...
+                    )} */}
 
                     {/* Main Form Content */}
-                    <div className={selectedTemplate ? "lg:col-span-7 xl:col-span-8" : ""}>
+                    <div>
                         {/* Header */}
                         <div className="text-center mb-4 fade-in">
                             <h1 className="gradient-text mb-1">Generate Worksheet</h1>
@@ -395,8 +539,117 @@ const GenerateWorksheet = () => {
                             </p>
                         </div>
 
+                        {/* University Selector */}
+                        <div className="card mb-6 p-4 border-2 border-indigo-50">
+                            <label className="block text-sm font-bold text-gray-700 mb-2">
+                                Select University / Organization
+                            </label>
+                            <select
+                                value={selectedUniversity}
+                                onChange={(e) => handleUniversitySelect(e.target.value)}
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary text-base bg-white"
+                            >
+                                <option value="" disabled>-- Select your institution --</option>
+                                {universities.map(uni => (
+                                    <option key={uni._id} value={uni._id}>{uni.name}</option>
+                                ))}
+                                <option value="other">Other (Upload Custom Header & Template)</option>
+                            </select>
+                            {isPresetActive && (
+                                <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                                    <Sparkles size={12} />
+                                    Using preset header and template. Manual upload disabled.
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Guidance Message for "Other" Option */}
+                        {selectedUniversity === 'other' && (
+                            <div className="card mb-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 animate-slide-up">
+                                <div className="flex items-center gap-1.5 mb-3">
+                                    <Info size={16} className="text-blue-600" />
+                                    <h3 className="font-semibold text-gray-800" style={{ fontSize: '11px' }}>Getting Started with Custom Templates</h3>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                    {/* Column 1: For New Users */}
+                                    <div className="bg-white p-3 rounded-lg shadow-sm border border-blue-100">
+                                        <div className="flex items-center gap-1.5 mb-2">
+                                            <Upload size={14} className="text-indigo-600" />
+                                            <h4 className="font-semibold text-indigo-900" style={{ fontSize: '10px' }}>📋 For New Users</h4>
+                                        </div>
+                                        <p className="text-gray-600 mb-2" style={{ fontSize: '10px' }}>First time using "Other"? Follow these steps:</p>
+                                        <ol className="text-gray-700 space-y-1 ml-3 list-decimal" style={{ fontSize: '10px' }}>
+                                            <li>
+                                                <strong>Upload Sample PDF:</strong> Click{' '}
+                                                <button
+                                                    onClick={() => navigate('/upload-sample')}
+                                                    className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                                >
+                                                    Upload Template
+                                                </button>{' '}
+                                                to upload a sample PDF.
+                                            </li>
+                                            <li><strong>AI Analysis:</strong> AI analyzes PDF structure automatically.</li>
+                                            <li><strong>Save Template:</strong> Click "Save" to store template.</li>
+                                            <li><strong>Add Header:</strong> Upload a header image below.</li>
+                                            <li><strong>Upload Once:</strong> ✅ Upload files <strong>once</strong> only!</li>
+                                        </ol>
+                                        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                                            <p className="text-gray-600 flex items-center gap-1" style={{ fontSize: '9px' }}>
+                                                <MessageCircle size={12} className="text-yellow-600" />
+                                                <span><strong>Issues?</strong> Send feedback.</span>
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Column 2: For Existing Users */}
+                                    <div className="bg-white p-3 rounded-lg shadow-sm border border-green-100">
+                                        <div className="flex items-center gap-1.5 mb-2">
+                                            <CheckCircle size={14} className="text-green-600" />
+                                            <h4 className="font-semibold text-green-900" style={{ fontSize: '10px' }}>✅ For Existing Users</h4>
+                                        </div>
+                                        <p className="text-gray-600 mb-2" style={{ fontSize: '10px' }}>Already set up? Here's what you need:</p>
+                                        <div className="text-gray-700 space-y-1.5" style={{ fontSize: '10px' }}>
+                                            <div className="flex items-start gap-1.5">
+                                                <span className="text-green-600 font-bold mt-0.5">1.</span>
+                                                <div>
+                                                    <strong>Continue:</strong> If uploaded, just scroll down and generate.
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-1.5">
+                                                <span className="text-green-600 font-bold mt-0.5">2.</span>
+                                                <div>
+                                                    <strong>Update Header:</strong> Upload new image below to <strong>auto-replace</strong>.
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-1.5">
+                                                <span className="text-green-600 font-bold mt-0.5">3.</span>
+                                                <div>
+                                                    <strong>Change Template:</strong> Visit{' '}
+                                                    <button
+                                                        onClick={() => navigate('/upload-sample')}
+                                                        className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                                    >
+                                                        Upload Template
+                                                    </button>.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                                            <p className="text-gray-600 flex items-center gap-1" style={{ fontSize: '9px' }}>
+                                                <MessageCircle size={12} className="text-green-600" />
+                                                <span><strong>Need help?</strong> Send feedback.</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Template Selection */}
-                        {templates.length > 0 && (
+                        {/* Show if NOT preset OR if preset is active but NO template auto-selected (fallback) */}
+                        {(!isPresetActive || !selectedTemplate) && templates.length > 0 && (
                             <div className="card mb-3 animate-slide-up">
                                 <div className="flex justify-between items-center mb-3">
                                     <div>
@@ -545,90 +798,92 @@ const GenerateWorksheet = () => {
                                     </select>
                                 </div> */}
 
-                                <div className="input-group">
-                                    <label className="input-label">
-                                        University/College Header Image (Optional)
-                                    </label>
+                                {!isPresetActive && (
+                                    <div className="input-group">
+                                        <label className="input-label">
+                                            University/College Header Image (Optional)
+                                        </label>
 
-                                    <div
-                                        {...getHeaderRootProps()}
-                                        style={{
-                                            border: '2px dashed var(--border)',
-                                            borderRadius: '8px',
-                                            padding: '20px',
-                                            textAlign: 'center',
-                                            cursor: 'pointer',
-                                            background: isHeaderDragActive ? 'var(--primary-light)' : 'var(--bg-primary)',
-                                            transition: 'border .24s ease-in-out',
-                                            marginBottom: '10px'
-                                        }}
-                                    >
-                                        <input {...getHeaderInputProps()} />
-                                        <ImageIcon size={32} style={{ color: 'var(--text-secondary)', marginBottom: '8px' }} />
-                                        {isHeaderDragActive ? (
-                                            <p style={{ color: 'var(--primary)' }}>Drop header image here...</p>
-                                        ) : (
-                                            <p style={{ color: 'var(--text-secondary)' }}>
-                                                Drag & drop University/College Logo here (Max 1 image)
-                                            </p>
+                                        <div
+                                            {...getHeaderRootProps()}
+                                            style={{
+                                                border: '2px dashed var(--border)',
+                                                borderRadius: '8px',
+                                                padding: '20px',
+                                                textAlign: 'center',
+                                                cursor: 'pointer',
+                                                background: isHeaderDragActive ? 'var(--primary-light)' : 'var(--bg-primary)',
+                                                transition: 'border .24s ease-in-out',
+                                                marginBottom: '10px'
+                                            }}
+                                        >
+                                            <input {...getHeaderInputProps()} />
+                                            <ImageIcon size={32} style={{ color: 'var(--text-secondary)', marginBottom: '8px' }} />
+                                            {isHeaderDragActive ? (
+                                                <p style={{ color: 'var(--primary)' }}>Drop header image here...</p>
+                                            ) : (
+                                                <p style={{ color: 'var(--text-secondary)' }}>
+                                                    Drag & drop University/College Logo here (Max 1 image)
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Temporary Header Image Preview (when user uploads new one) */}
+                                        {headerImage && (
+                                            <div style={{ position: 'relative', width: '200px', height: '60px', marginTop: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px' }}>
+                                                <img
+                                                    src={headerImage.preview}
+                                                    alt="Header Preview"
+                                                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={removeHeaderImage}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '-10px',
+                                                        right: '-10px',
+                                                        background: 'var(--error)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: '24px',
+                                                        height: '24px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        fontSize: '14px',
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                    }}
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
                                         )}
+
+                                        {/* Show stored header ALWAYS below upload section */}
+                                        {user?.headerImageUrl && (
+                                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                                <p className="text-sm text-secondary mb-2" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                                    ✅ Your saved header (will be used automatically):
+                                                </p>
+                                                <img
+                                                    src={user.headerImageUrl}
+                                                    alt="Saved Header"
+                                                    style={{ maxHeight: '60px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: 'white' }}
+                                                />
+                                                <p className="text-xs text-tertiary mt-2" style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                                                    {headerImage ? 'You just uploaded a new header - it replaced this one and will be used from now on.' : 'This header will be used automatically for all worksheets.'}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                                            This image will appear at the very top of your worksheet PDF.
+                                        </p>
                                     </div>
-
-                                    {/* Temporary Header Image Preview (when user uploads new one) */}
-                                    {headerImage && (
-                                        <div style={{ position: 'relative', width: '200px', height: '60px', marginTop: '10px', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px' }}>
-                                            <img
-                                                src={headerImage.preview}
-                                                alt="Header Preview"
-                                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={removeHeaderImage}
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: '-10px',
-                                                    right: '-10px',
-                                                    background: 'var(--error)',
-                                                    color: 'white',
-                                                    border: 'none',
-                                                    borderRadius: '50%',
-                                                    width: '24px',
-                                                    height: '24px',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    cursor: 'pointer',
-                                                    fontSize: '14px',
-                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                                }}
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {/* Show stored header ALWAYS below upload section */}
-                                    {user?.headerImageUrl && (
-                                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                            <p className="text-sm text-secondary mb-2" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                                                ✅ Your saved header (will be used automatically):
-                                            </p>
-                                            <img
-                                                src={user.headerImageUrl}
-                                                alt="Saved Header"
-                                                style={{ maxHeight: '60px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: 'white' }}
-                                            />
-                                            <p className="text-xs text-tertiary mt-2" style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
-                                                {headerImage ? 'You just uploaded a new header - it replaced this one and will be used from now on.' : 'This header will be used automatically for all worksheets.'}
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-                                        This image will appear at the very top of your worksheet PDF.
-                                    </p>
-                                </div>
+                                )}
 
                                 {/* Image Upload for Context (NEW) */}
                                 <div className="input-group">

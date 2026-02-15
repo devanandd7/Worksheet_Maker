@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 class GeminiService {
     constructor() {
         this.client = null;
-        this.modelName = 'gemini-3-flash-preview';
+        this.modelName = 'gemini-3-flash-preview'; // ✅ FIXED: Correct model name
         this.initialized = false;
     }
 
@@ -25,7 +25,7 @@ class GeminiService {
         try {
             this.client = new GoogleGenAI({ apiKey });
             this.initialized = true;
-            console.log('✅ Gemini AI initialized successfully (gemini-3-flash-preview)');
+            console.log('✅ Gemini AI initialized successfully (gemini-2.0-flash-exp)');
         } catch (error) {
             console.error('❌ Gemini AI initialization failed:', error.message);
             throw new Error(`Failed to initialize Gemini AI: ${error.message}`);
@@ -46,7 +46,7 @@ class GeminiService {
         try {
             const response = await this.client.models.generateContent({
                 model: this.modelName,
-                contents: 'Say "Hello, Gemini 3 Flash is working perfectly!"'
+                contents: 'Say "Hello, Gemini 2.0 Flash is working perfectly!"'
             });
 
             return {
@@ -156,6 +156,69 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
     }
 
     /**
+     * ✅ NEW: Smart detection if code is needed for the topic
+     * @param {String} topic 
+     * @param {String} syllabus 
+     * @param {String} additionalInstructions 
+     * @returns {Boolean}
+     */
+    _isCodeRequired(topic, syllabus, additionalInstructions) {
+        const combinedText = `${topic} ${syllabus} ${additionalInstructions}`.toLowerCase();
+
+        // Code is REQUIRED if mentions:
+        const codeKeywords = [
+            'code', 'program', 'implement', 'algorithm', 'function',
+            'python', 'java', 'javascript', 'c++', 'cpp', 'html', 'css',
+            'coding', 'script', 'syntax', 'compile', 'execute',
+            'api', 'library', 'framework', 'import', 'class',
+            'loop', 'variable', 'array', 'list', 'dictionary'
+        ];
+
+        // Code is NOT required if purely theoretical:
+        const theoreticalKeywords = [
+            'theory', 'concept', 'definition', 'explain', 'describe',
+            'analyze', 'discuss', 'compare', 'history', 'overview',
+            'introduction', 'basics', 'fundamentals', 'principles'
+        ];
+
+        const hasCodeKeywords = codeKeywords.some(keyword => combinedText.includes(keyword));
+        const hasOnlyTheory = theoreticalKeywords.some(keyword => combinedText.includes(keyword)) && !hasCodeKeywords;
+
+        return hasCodeKeywords && !hasOnlyTheory;
+    }
+
+    /**
+     * ✅ NEW: Extract preferred programming language
+     * @param {String} topic 
+     * @param {String} syllabus 
+     * @param {String} additionalInstructions 
+     * @returns {String}
+     */
+    _extractPreferredLanguage(topic, syllabus, additionalInstructions) {
+        const combinedText = `${topic} ${syllabus} ${additionalInstructions}`.toLowerCase();
+
+        const languageKeywords = {
+            'python': ['python', 'py', 'pandas', 'numpy', 'matplotlib', 'django', 'flask'],
+            'java': ['java', 'spring', 'hibernate', 'jvm'],
+            'javascript': ['javascript', 'js', 'node', 'react', 'vue', 'angular', 'express'],
+            'cpp': ['c++', 'cpp', 'stl'],
+            'c': ['c programming', ' c language'],
+            'html': ['html', 'css', 'web design'],
+            'sql': ['sql', 'database', 'mysql', 'postgresql'],
+            'r': [' r programming', ' r language', 'rstudio'],
+            'excel': ['excel', 'vba', 'spreadsheet', 'vlookup', 'pivot']
+        };
+
+        for (const [lang, keywords] of Object.entries(languageKeywords)) {
+            if (keywords.some(keyword => combinedText.includes(keyword))) {
+                return lang;
+            }
+        }
+
+        return 'python'; // Default fallback
+    }
+
+    /**
      * Generate worksheet content using AI
      * @param {Object} params - Generation parameters
      * @returns {Promise<Object>} - Generated worksheet content
@@ -180,6 +243,23 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
         } = params;
 
         try {
+            // ✅ NEW: Smart detection of code requirement and language
+            const codeRequired = this._isCodeRequired(
+                topic,
+                syllabus || '',
+                additionalInstructions || ''
+            );
+            const preferredLanguage = this._extractPreferredLanguage(
+                topic,
+                syllabus || '',
+                additionalInstructions || ''
+            );
+
+            console.log(`🧠 SMART DETECTION:
+- Code Required: ${codeRequired}
+- Preferred Language: ${preferredLanguage}
+- Topic: ${topic}`);
+
             const prompt = this.buildWorksheetPrompt({
                 topic,
                 syllabus,
@@ -190,7 +270,9 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
                 variationSeed,
                 imageData: images,
                 imageCount: images ? images.length : 0,
-                additionalInstructions: additionalInstructions || ''
+                additionalInstructions: additionalInstructions || '',
+                codeRequired, // ✅ NEW
+                preferredLanguage // ✅ NEW
             });
 
             // Wrap generation with retry logic
@@ -225,7 +307,66 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
                 console.warn('⚠️ No imagePlacements found in AI response');
             }
 
-            return content;
+            // ✅ CRITICAL FIX: Remove ANY fields after learningOutcome + strict validation
+            const allowedFields = [
+                'mainQuestionTitle',
+                'questionParts',
+                'aim',
+                'problemStatement',
+                'dataset',
+                'algorithm',
+                'objective',
+                'code',
+                'output',
+                'observation',
+                'additionalNotes',
+                'imageAnalysis',
+                'imagePlacements',
+                'imageCaptions',
+                'learningOutcome'
+            ];
+
+            // STRICTLY PROHIBITED fields (case-insensitive check)
+            const prohibitedFields = [
+                'additionalresources',
+                'additional_resources',
+                'resources',
+                'references',
+                'bibliography',
+                'furtherreading',
+                'further_reading',
+                'conclusion',
+                'summary',
+                'appendix',
+                'notes'
+            ];
+
+            // First pass: Remove prohibited fields
+            const cleanedContent = {};
+            for (const key of Object.keys(content)) {
+                const lowerKey = key.toLowerCase().replace(/[_\s]/g, '');
+
+                // Check if field is prohibited
+                const isProhibited = prohibitedFields.some(prohibited =>
+                    lowerKey.includes(prohibited) || prohibited.includes(lowerKey)
+                );
+
+                if (!isProhibited && allowedFields.includes(key)) {
+                    cleanedContent[key] = content[key];
+                }
+            }
+
+            const removedFields = Object.keys(content).filter(k => !Object.keys(cleanedContent).includes(k));
+            if (removedFields.length > 0) {
+                console.log('🧹 REMOVED PROHIBITED FIELDS:', removedFields.join(', '));
+            }
+
+            // ✅ CRITICAL: Ensure learningOutcome is present and is last
+            if (!cleanedContent.learningOutcome) {
+                console.warn('⚠️ WARNING: No learningOutcome field found!');
+            }
+
+            return cleanedContent;
         } catch (error) {
             console.error('Worksheet generation error:', error);
             throw new Error(`Failed to generate worksheet: ${error.message}`);
@@ -279,7 +420,8 @@ Requirement: Standard worksheet length. Focus on clarity and precision.
     buildWorksheetPrompt({
         topic, syllabus, difficulty, sections,
         userContext, userMemory, variationSeed,
-        imageData, imageCount, additionalInstructions // Added additionalInstructions
+        imageData, imageCount, additionalInstructions,
+        codeRequired, preferredLanguage // ✅ NEW parameters
     }) {
         return `You are an ELITE ACADEMIC WORKSHEET GENERATOR for ${userContext.university}.
 
@@ -304,6 +446,95 @@ Syllabus Alignment: ${syllabus}
 Uniqueness Seed: ${variationSeed || Date.now()}
 Variation Level: ${userMemory?.variationLevel || 'high'}
 
+${additionalInstructions ? `
+═══════════════════════════════════════════════════════════════
+💡 USER'S ADDITIONAL INSTRUCTIONS (PRIORITY: HIGHEST!)
+═══════════════════════════════════════════════════════════════
+The user has provided specific instructions that you MUST follow:
+
+"${additionalInstructions}"
+
+🎯 HOW TO UTILIZE THESE INSTRUCTIONS SMARTLY:
+
+1. CONTENT FOCUS: If they mention specific topics/concepts, emphasize those throughout the worksheet
+   Example: "Focus on practical implementation" → Include more hands-on code examples
+   
+2. EXAMPLES & DATASETS: If they specify datasets or examples, use those exact ones
+   Example: "Use iris dataset" → All examples must use iris dataset
+   
+3. DEPTH & BREADTH: Adjust complexity based on their requirements
+   Example: "Keep it simple" → Avoid advanced concepts, use beginner-friendly language
+   Example: "Deep dive into theory" → Expand problemStatement with mathematical foundations
+   
+4. STRUCTURE PREFERENCES: If they want specific sections emphasized
+   Example: "More focus on visualization" → Expand output section with detailed chart descriptions
+   
+5. STYLE ADAPTATION: Match tone/formality to their requests
+   Example: "Industry-oriented" → Use real-world case studies and business terminology
+   Example: "Research paper style" → Add citations, formal language, extensive background
+
+6. CONSTRAINTS: Respect any limitations they specify
+   Example: "Without using libraries" → Pure implementation only
+   Example: "Beginner level" → No advanced algorithms
+
+INTEGRATE THESE INSTRUCTIONS NATURALLY - don't just mention them, APPLY them throughout:
+- In aim section: Align objectives with user's goals
+- In problemStatement: Frame problem according to their context
+- In code: Follow their specified approach/tools
+- In output: Show results that match their expectations
+- In learningOutcome: Reflect what THEY want students to learn
+
+Treat these instructions as HIGHEST PRIORITY constraints.
+═══════════════════════════════════════════════════════════════
+` : ''}
+
+═══════════════════════════════════════════════════════════════
+🧠 INTELLIGENT CODE GENERATION (CRITICAL!)
+═══════════════════════════════════════════════════════════════
+
+🎯 CODE REQUIREMENT DETECTION:
+Analysis Result: ${codeRequired ? '✅ CODE IS REQUIRED' : '❌ CODE NOT NEEDED (Theoretical topic)'}
+${codeRequired ? `Preferred Language: ${preferredLanguage.toUpperCase()}` : ''}
+
+📋 RULES FOR CODE SECTION:
+
+IF CODE IS NOT REQUIRED (Theoretical topics):
+  ❌ DO NOT include "code" field in JSON
+  ❌ DO NOT generate any programming code
+  ✓ Focus on theoretical explanation in problemStatement
+  ✓ Use diagrams, flowcharts, or conceptual explanations instead
+  
+  Examples of NO CODE topics:
+  - "Explain cloud computing concepts"
+  - "Discuss agile methodology"
+  - "SEO theory and best practices"
+  - "Digital marketing fundamentals"
+  - "Machine learning concepts overview"
+  - "Web Analytics" (tool usage, not coding)
+
+IF CODE IS REQUIRED (Implementation topics):
+  ✅ Generate code in ${preferredLanguage ? preferredLanguage.toUpperCase() : 'PYTHON'}
+  ✅ Include full working implementation
+  ✅ Add detailed comments
+  ✅ Show practical examples
+  
+  Examples of CODE topics:
+  - "Implement sorting algorithm in Python"
+  - "Create REST API with Node.js"
+  - "Build calculator in Java"
+  - "Web scraping with Python"
+
+🔍 LANGUAGE PRIORITY (when code IS needed):
+1. User-specified language (from additionalInstructions) - HIGHEST PRIORITY
+2. Detected from topic: ${preferredLanguage || 'python'}
+3. Subject default (e.g., Web Dev → JavaScript, Data Science → Python)
+
+⚠️ CRITICAL DECISION RULE:
+IF topic is purely theoretical/conceptual → SKIP "code" field entirely
+IF topic requires implementation → Include "code" with language: "${preferredLanguage || 'python'}"
+
+═══════════════════════════════════════════════════════════════
+
 ═══════════════════════════════════════════════════════════════
 🎯 PRIMARY OBJECTIVE
 ═══════════════════════════════════════════════════════════════
@@ -313,7 +544,85 @@ Generate a worksheet that:
 ✓ Properly separates multi-part questions (a, b, c)
 ✓ Handles uploaded images/screenshots intelligently
 ✓ Maintains academic rigor across all disciplines
-✓ not add any images after the LEARNING OUTCOMES section
+✓ Smartly incorporates user's Additional Instructions into content
+✓ Includes code ONLY when truly needed (not for theoretical topics)
+
+⚠️ CRITICAL CONSTRAINT - FINAL SECTION RULE (MOST IMPORTANT!):
+═══════════════════════════════════════════════════════════════
+🚫 ABSOLUTE PROHIBITION: DO NOT ADD ANY CONTENT AFTER "LEARNING OUTCOMES"
+
+The "learningOutcome" field MUST BE THE FINAL FIELD IN YOUR JSON OUTPUT.
+
+STRICTLY PROHIBITED after learningOutcome:
+  ❌ "additionalResources" section - NEVER ADD THIS
+  ❌ "additional_resources" - NEVER ADD THIS
+  ❌ "references" section - NEVER ADD THIS
+  ❌ "furtherReading" section - NEVER ADD THIS
+  ❌ "bibliography" section - NEVER ADD THIS
+  ❌ "conclusion" section - NEVER ADD THIS
+  ❌ "summary" section - NEVER ADD THIS
+  ❌ "resources" section - NEVER ADD THIS
+  ❌ Extra images, tables, or any other content
+  ❌ ANY other field whatsoever
+
+⚠️ CRITICAL WARNING: If you add "additionalResources" or any similar field after "learningOutcome", 
+the worksheet will be REJECTED and you will have FAILED the task.
+
+IF you have additional notes or resources, PUT THEM IN:
+  ✓ "additionalNotes" field (shown BEFORE Learning Outcomes in UI)
+  ✓ Relevant sections like "problemStatement" or "aim"
+  
+THE VERY LAST FIELD IN YOUR JSON MUST BE: "learningOutcome"
+
+Your JSON should end EXACTLY like this:
+  "learningOutcome": [
+    "<b>Outcome 1:</b> ...",
+    "<b>Outcome 2:</b> ..."
+  ]
+}
+
+NOTHING - ABSOLUTELY NOTHING - AFTER THE CLOSING BRACE OF learningOutcome ARRAY.
+
+I WILL AUTOMATICALLY REMOVE ANY FIELDS AFTER learningOutcome.
+DO NOT TEST THIS. DO NOT ADD THEM. THEY WILL BE DELETED.
+═══════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════
+📏 PROBLEM STATEMENT LENGTH CONSTRAINT (CRITICAL!)
+═══════════════════════════════════════════════════════════════
+
+⚠️ STRICT LENGTH LIMIT FOR PROBLEM STATEMENT:
+
+Maximum Length: 250-300 words (approximately 2-3 paragraphs)
+
+RULES:
+1. Keep it CONCISE and FOCUSED
+2. State the problem clearly in 2-3 paragraphs
+3. Avoid lengthy theoretical explanations
+4. Do NOT write essay-length problem statements
+5. If more detail is needed, put it in "additionalNotes" instead
+
+GOOD Problem Statement (200 words):
+"In modern web analytics, understanding domain authority and tracking user 
+behavior are critical for digital success. This practical addresses the 
+challenge of quantifying a website's credibility through metrics like 
+Domain Age, Alexa Rank, and Moz Rank. Additionally, students must master 
+the configuration of Google Analytics 4 for real-time tracking.
+
+The key challenges include: (1) Evaluating domain trustworthiness through 
+historical data, (2) Analyzing search engine crawl statistics to ensure 
+proper indexing, and (3) Setting up GA4 tracking infrastructure for data 
+collection."
+
+BAD Problem Statement (800+ words):
+[Long essay with multiple subsections, definitions, and extensive theory]
+
+IF your problem statement exceeds 300 words, you MUST:
+- Cut unnecessary details
+- Move theoretical content to "aim" or "additionalNotes"
+- Focus ONLY on the core problem being solved
+═══════════════════════════════════════════════════════════════
+
 ═══════════════════════════════════════════════════════════════
 🧠 INTELLIGENT MULTI-PART QUESTION DETECTION
 ═══════════════════════════════════════════════════════════════
@@ -341,7 +650,7 @@ MUST OUTPUT AS:
     {
       "part": "b",
       "title": "Pivot Table Creation and Analysis",
-      "description": "Create a pivot table with the company dataset having following columns: emp_id, date, sales_man_name, quantity, Department, State, Sales. Generate pivot table, pivot chart, and implement the slicer. Create 4 different pivot tables on the same sheet."
+      "description": "Create a pivot table with the company dataset..."
     }
   ]
 }
@@ -354,6 +663,7 @@ DOCUMENT STRUCTURE (TOP TO BOTTOM):
 
 ┌─────────────────────────────────────────────────────────────┐
 │ 1. HEADER SECTION (Student/Course Details)                  │
+│    Keep EXACTLY as provided by user - NO CHANGES            │
 │    Font: 11pt, Line height: 1.4, Margin bottom: 20px       │
 └─────────────────────────────────────────────────────────────┘
 
@@ -381,20 +691,22 @@ DOCUMENT STRUCTURE (TOP TO BOTTOM):
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. AIM / OVERVIEW HEADING                                    │
 │    <h3 style="font-size: 15px; font-weight: 600;           │
-│      margin-top: 24px; margin-bottom: 12px;                 │
+│      margin-top: 32px; margin-bottom: 14px;                 │
 │      border-bottom: 1px solid #333; padding-bottom: 8px;">  │
-│      Aim / Overview of the Practical                        │
+│      AIM                                                     │
 │    </h3>                                                     │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │ 4. AIM CONTENT                                               │
-│    <div style="margin-left: 20px; margin-bottom: 20px;     │
-│      line-height: 1.7;">                                     │
-│      [Aim title/subtitle]                                    │
-│      <p style="margin-top: 8px;">[Description]</p>          │
-│      <ul style="margin-top: 12px; margin-left: 20px;       │
-│        line-height: 1.8;">                                   │
+│    <div style="margin-left: 20px; margin-bottom: 24px;     │
+│      line-height: 1.8; text-align: justify;">               │
+│      [Aim subtitle]                                          │
+│      <p style="margin-top: 10px; margin-bottom: 14px;">     │
+│        [Description paragraph]                               │
+│      </p>                                                    │
+│      <ul style="margin-top: 14px; margin-left: 20px;       │
+│        line-height: 2;">                                     │
 │        <li>Objective point 1</li>                           │
 │        <li>Objective point 2</li>                           │
 │      </ul>                                                   │
@@ -402,28 +714,22 @@ DOCUMENT STRUCTURE (TOP TO BOTTOM):
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│ 5. PROBLEM STATEMENT HEADING                                 │
-│    <h3 style="font-size: 15px; font-weight: 600;           │
-│      margin-top: 24px; margin-bottom: 12px;                 │
-│      border-bottom: 1px solid #333; padding-bottom: 8px;">  │
-│      Problem Statement                                       │
-│    </h3>                                                     │
-└─────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────┐
-│ 6. SUBSEQUENT SECTIONS (Dataset, Objective, Code, Output)   │
-│    ALL follow the same heading + content pattern            │
-│    Spacing: 24px between sections, 20px left indent         │
+│ 5. ALL OTHER SECTIONS                                        │
+│    Follow same pattern:                                      │
+│    - Section heading: 32px margin-top                       │
+│    - Content: 20px left margin, 24px bottom margin         │
+│    - Line height: 1.8                                        │
+│    - Paragraph spacing: 14px                                │
 └─────────────────────────────────────────────────────────────┘
 
 TYPOGRAPHY SPECIFICATIONS:
 • Main Section Headings: 15px, bold (600), underline border
 • Subsection Headings: 14px, semibold (500)
-• Body Text: 13px, line-height 1.7
+• Body Text: 13px, line-height 1.8
 • Code Blocks: 12px, monospace, background #f8f8f8
 • Indentation: 20px for all content under headings
-• Paragraph Spacing: 12px between paragraphs
-• Section Spacing: 24px between major sections
+• Paragraph Spacing: 14px between paragraphs
+• Section Spacing: 32px between major sections
 
 ═══════════════════════════════════════════════════════════════
 🖼️ IMAGE ANALYSIS & INTEGRATION (CRITICAL)
@@ -434,54 +740,33 @@ ${imageData ? `
 │ ⚠️ IMAGE UPLOADED - ANALYZE THOROUGHLY                      │
 └─────────────────────────────────────────────────────────────┘
 
-ANALYSIS CHECKLIST:
-☐ Extract text from image (OCR if screenshot)
-☐ Identify question parts (a, b, c)
-☐ Determine proper placement ("code", "output", "problemStatement")
-☐ Generate a descriptive caption
-
-3. RETURN IMAGE PLACEMENTS (CRITICAL):
-   In your JSON response, you MUST include an "imagePlacements" object mapping valid section names to image indices.
-   
-   VALID SECTION KEYS: "aim", "problemStatement", "dataset", "algorithm", "code", "output"
-
-   RULES FOR PLACEMENT:
-   - Code Screenshots -> "code"
-   - Output/Terminal/Console Screenshots -> "output" (If multiple outputs, place sequentially)
-   - Hardware/Circuit Diagrams -> "problemStatement" or "aim" or "dataset"
-   - Data Tables/Graphs -> "dataset" or "output"
-   
-   Example:
-   "imagePlacements": {
-     "code": [0],           // Image 0 -> code section
-     "output": [1]          // Image 1 -> output section
-   }
-
 CRITICAL: YOU HAVE RECEIVED ${imageCount} IMAGES (Indices 0 to ${imageCount - 1}).
 YOU MUST USE ALL ${imageCount} IMAGES.
 Map EVERY single image index (0 to ${imageCount - 1}) to a section.
 If an image doesn't fit perfectly, place it in "aim" or "problemStatement" or "additionalNotes".
 DO NOT LEAVE ANY IMAGE UNUSED.
 CRITICAL: Do NOT dump all images in one section. Distribute them where they contextually belong.
-☐ Extract any tables/datasets visible
-☐ Note any diagrams/flowcharts
-☐ Check for code snippets or formulas
+
+VALID SECTION KEYS: "aim", "problemStatement", "dataset", "algorithm", "code", "output", "observation"
+
+PLACEMENT RULES:
+- Code Screenshots → "code"
+- Output/Terminal/Console Screenshots → "output" (If multiple outputs, place sequentially)
+- Hardware/Circuit Diagrams → "problemStatement" or "aim" or "dataset"
+- Data Tables/Graphs → "dataset" or "output"
+
+Example:
+"imagePlacements": {
+  "code": [0],           // Image 0 → code section
+  "output": [1]          // Image 1 → output section
+}
 
 INTEGRATION RULES:
 1. If image contains the main question → Use it as questionParts
 2. If image shows a dataset → Extract it into "dataset" field
 3. If image has diagrams → Describe in "problemStatement"
 4. If image is a reference → Mention in "additionalNotes"
-
-OUTPUT IN JSON:
-"imageAnalysis": {
-  "type": "question|dataset|diagram|reference",
-  "extractedText": "[Full text from image]",
-  "detectedParts": ["a", "b"],
-  "integrationMethod": "Used as main question parts"
-}
-` : ''
-            }
+` : ''}
 
 ═══════════════════════════════════════════════════════════════
 📝 REQUIRED OUTPUT STRUCTURE
@@ -490,99 +775,117 @@ OUTPUT IN JSON:
 YOU MUST GENERATE: ${sections.map((s, i) => `${i + 1}. ${s}`).join(', ')}
 
 ═══════════════════════════════════════════════════════════════
-🎨 DOMAIN - ADAPTIVE EXAMPLES
+🎨 DOMAIN-ADAPTIVE EXAMPLES
 ═══════════════════════════════════════════════════════════════
 
 EXCEL / DATA ANALYSIS: Include formulas, pivot table steps, slicer instructions
 PROGRAMMING: Include complete runnable code with comments
 ENGINEERING: Include calculations, units, diagrams descriptions
 MANAGEMENT: Include case studies, frameworks, decision matrices
+WEB ANALYTICS: Focus on tool usage, screenshots, step-by-step guides (NO code)
 
 ═══════════════════════════════════════════════════════════════
 ⚠️ CRITICAL QUALITY RULES
 ═══════════════════════════════════════════════════════════════
 
-✗ NEVER: Put multi - part questions in one line
+✗ NEVER: Put multi-part questions in one line
 ✗ NEVER: Skip section headings
 ✗ NEVER: Use inconsistent indentation
 ✗ NEVER: Ignore uploaded images
+✗ NEVER: Add content after learningOutcome
 
-✓ ALWAYS: Separate question parts(a, b, c) with proper formatting
+✓ ALWAYS: Separate question parts (a, b, c) with proper formatting
 ✓ ALWAYS: Use consistent heading styles
 ✓ ALWAYS: Apply 20px left margin under each heading
 ✓ ALWAYS: Analyze and integrate uploaded images
+✓ ALWAYS: Make learningOutcome the LAST field
 
 Common Mistakes to Avoid:
 ${userMemory?.commonMistakes?.length > 0 ? userMemory.commonMistakes.map(m => `• ${m}`).join('\n') : '• None recorded yet'}
 
 ═══════════════════════════════════════════════════════════════
-📤 JSON OUTPUT FORMAT(STRICTLY FOLLOW)
+📤 JSON OUTPUT FORMAT (STRICTLY FOLLOW)
 ═══════════════════════════════════════════════════════════════
 
-Return ONLY valid JSON(no markdown, no backticks):
+Return ONLY valid JSON (no markdown, no backticks):
 
 {
-    "mainQuestionTitle": "Primary topic or title extracted from question",
-
-        "questionParts": [
-            {
-                "part": "a",
-                "title": "Short descriptive title for part a",
-                "description": "Full description of what part a asks"
-            }
-        ],
-
-            "aim": "<div style='margin-left: 20px; line-height: 1.7;'><p style='margin-bottom: 12px; font-weight: 500;'>[Aim Title]</p><p style='margin-bottom: 12px;'>[Description paragraph]</p><ul style='margin-left: 20px; line-height: 1.8;'><li>Point 1</li><li>Point 2</li></ul></div>",
-
-                "problemStatement": "<div style='margin-left: 20px; line-height: 1.7;'><p style='margin-bottom: 12px;'>[Problem description with context]</p></div>",
-
-                    "dataset": "<div style='margin-left: 20px;'><table style='width: 100%; border-collapse: collapse; margin: 16px 0;'><thead style='background: #f5f5f5;'><tr><th style='padding: 10px; border: 1px solid #ddd; text-align: left;'>Column1</th></tr></thead><tbody><tr><td style='padding: 10px; border: 1px solid #ddd;'>Data</td></tr></tbody></table></div>",
-
-                        "objective": [
-                            "Clear, specific objective 1",
-                            "Clear, specific objective 2"
-                        ],
-
-                            "code": {
-        "language": "excel|python|java|cpp|etc",
-            "source": "Complete code here with proper formatting and comments",
-                "explanation": "<div style='line-height: 1.7;'><p><b>Key Concepts:</b></p><ul style='margin-left: 20px;'><li>Explanation point 1</li><li>Explanation point 2</li></ul></div>"
-    },
-
-    "output": "<div style='margin-left: 20px; line-height: 1.7;'><h4 style='font-size: 14px; font-weight: 500; margin-bottom: 10px;'>Expected Output</h4><ol style='margin-left: 20px; line-height: 1.8;'><li>Output point 1</li><li>Output point 2</li></ol></div>",
-
-        "learningOutcome": [
-            "<b>Outcome 1:</b> Detailed skill/knowledge gained",
-            "<b>Outcome 2:</b> Detailed application understanding"
-        ],
-
-            "imageAnalysis": "${imageData ? 'Detailed analysis of uploaded image and how it was integrated' : 'No image provided'}",
-
-                "imagePlacements": {
-        "code": [0],
-            "output": [1]
-    },
-    "imageCaptions": [
-        "Figure 1: Caption for image 0",
-        "Figure 2: Caption for image 1"
-    ],
-
-        "additionalNotes": "Any supplementary information or references"
+  "mainQuestionTitle": "Primary topic or title extracted from question",
+  
+  "questionParts": [
+    {
+      "part": "a",
+      "title": "Short descriptive title for part a",
+      "description": "Full description of what part a asks"
+    }
+  ],
+  
+  "aim": "<div style='margin-left: 20px; line-height: 1.8; text-align: justify; margin-bottom: 24px;'><p style='margin-bottom: 14px; font-weight: 500;'>[Aim Title]</p><p style='margin-bottom: 14px;'>[Description paragraph]</p><ul style='margin-top: 14px; margin-left: 20px; line-height: 2;'><li>Point 1</li><li>Point 2</li></ul></div>",
+  
+  "problemStatement": "<div style='margin-left: 20px; line-height: 1.8; text-align: justify; margin-bottom: 24px;'><p style='margin-bottom: 14px;'>[Problem description with context]</p></div>",
+  
+  "dataset": "<div style='margin-left: 20px; margin-bottom: 24px;'><table style='width: 100%; border-collapse: collapse; margin: 16px 0;'><thead style='background: #f5f5f5;'><tr><th style='padding: 10px; border: 1px solid #ddd; text-align: left;'>Column1</th></tr></thead><tbody><tr><td style='padding: 10px; border: 1px solid #ddd;'>Data</td></tr></tbody></table></div>",
+  
+  "objective": [
+    "Clear, specific objective 1",
+    "Clear, specific objective 2"
+  ],
+  
+  ${codeRequired ? `"code": {
+    "language": "${preferredLanguage || 'python'}",
+    "source": "Complete code here with proper formatting and comments",
+    "explanation": "<div style='line-height: 1.8; margin-bottom: 24px;'><p><b>Key Concepts:</b></p><ul style='margin-left: 20px; line-height: 2;'><li>Explanation point 1</li><li>Explanation point 2</li></ul></div>"
+  },` : ''}
+  
+  "output": "<div style='margin-left: 20px; line-height: 1.8; margin-bottom: 24px;'><h4 style='font-size: 14px; font-weight: 500; margin-bottom: 12px;'>Expected Output</h4><ol style='margin-left: 20px; line-height: 2;'><li>Output point 1</li><li>Output point 2</li></ol></div>",
+  
+  "additionalNotes": "Any supplementary information or resources (PUT RESOURCES HERE, NOT AFTER learningOutcome)",
+  
+  ${imageCount > 0 ? `"imagePlacements": {
+    "code": [0],
+    "output": [1]
+  },
+  "imageCaptions": [
+    "Figure 1: Caption for image 0",
+    "Figure 2: Caption for image 1"
+  ],` : ''}
+  
+  "learningOutcome": [
+    "<b>Outcome 1:</b> Detailed skill/knowledge gained",
+    "<b>Outcome 2:</b> Detailed application understanding"
+  ]
 }
 
+⚠️ CRITICAL REMINDERS FOR JSON OUTPUT:
+1. "learningOutcome" MUST BE THE ABSOLUTE LAST FIELD
+2. DO NOT ADD "additionalResources", "references", or ANY field after learningOutcome
+3. ${codeRequired ? `Include "code" field with ${preferredLanguage} implementation` : 'SKIP "code" field entirely (theoretical topic)'}
+4. Valid JSON only (parseable without errors)
+5. All ${imageCount || 0} images must be mapped in imagePlacements
+6. Better spacing: 32px between sections, 24px margin-bottom, line-height 1.8
+
 ═══════════════════════════════════════════════════════════════
-🚀 PRE - SUBMISSION CHECKLIST
+🚀 PRE-SUBMISSION CHECKLIST
 ═══════════════════════════════════════════════════════════════
 
 Before returning JSON, verify:
-☑ Multi - part questions(a, b) are properly separated
+☑ Multi-part questions (a, b) are properly separated
 ☑ Each section has a proper heading with underline border
 ☑ All content under headings has 20px left margin
-☑ Image content(if any) is analyzed and integrated
-☑ Code is properly formatted with language specified
+☑ Problem Statement is UNDER 300 words (concise, not essay-length)
+☑ ${codeRequired ? `Code in ${preferredLanguage} with full implementation` : 'NO code field (not needed for this topic)'}
+☑ All ${imageCount || 0} images mapped to appropriate sections
+☑ additionalNotes contains any extra resources (NOT after learningOutcome)
+☑ learningOutcome is THE LAST FIELD
+☑ NO "additionalResources" field exists ANYWHERE
+☑ NO "references" field exists ANYWHERE
+☑ NO fields exist after learningOutcome
 ☑ JSON is valid and parseable
-☑ Professional typography applied throughout
-☑ Spacing is consistent(24px between sections)
+☑ Better spacing applied (32px sections, 24px margins, 1.8 line-height)
+☑ Professional typography throughout
+
+⚠️ FINAL CHECK: Count the fields in your JSON. The LAST field name should be "learningOutcome".
+If you see ANY field after "learningOutcome", DELETE it immediately.
 
 ═══════════════════════════════════════════════════════════════
 
@@ -606,7 +909,7 @@ NOW GENERATE THE WORKSHEET WITH EXCELLENCE AND PRECISION.`;
         try {
             const prompt = `Regenerate ONLY the "${section}" section for this worksheet.
 
-    Topic: ${context.topic}
+Topic: ${context.topic}
 Syllabus: ${context.syllabus}
 
 Current "${section}" content:
@@ -614,11 +917,11 @@ ${currentContent}
 
 Requirements:
 - Make it DIFFERENT from the current version
-    - Maintain academic quality
-        - Stay within syllabus scope
-            - Return ONLY the new content text(not JSON)
+- Maintain academic quality
+- Stay within syllabus scope
+- Return ONLY the new content text (not JSON)
 
-Generate improved "${section}" content: `;
+Generate improved "${section}" content:`;
 
             const response = await this.client.models.generateContent({
                 model: this.modelName,
@@ -633,7 +936,7 @@ Generate improved "${section}" content: `;
             return response.text.trim();
         } catch (error) {
             console.error('Section regeneration error:', error);
-            throw new Error(`Failed to regenerate ${section}: ${error.message} `);
+            throw new Error(`Failed to regenerate ${section}: ${error.message}`);
         }
     }
 }

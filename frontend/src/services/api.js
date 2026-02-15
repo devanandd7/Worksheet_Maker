@@ -48,9 +48,14 @@ export const templateAPI = {
     saveTemplate: (data, token) => api.post('/templates/save', data, {
         headers: { Authorization: `Bearer ${token}` }
     }),
-    getSuggestions: (subject, token) => api.get(`/templates/suggestions?subject=${subject}`, {
-        headers: { Authorization: `Bearer ${token}` }
-    }),
+    getSuggestions: (subject, token, university) => {
+        let url = `/templates/suggestions?`;
+        if (subject) url += `subject=${subject}&`;
+        if (university) url += `university=${university}`;
+        return api.get(url, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+    },
     getById: (id, token) => api.get(`/templates/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
     }),
@@ -115,7 +120,33 @@ const unifiedAPI = {
     generateWorksheetPDF: worksheetAPI.generatePDF,
     getWorksheetHistory: worksheetAPI.getHistory,
     getWorksheetById: worksheetAPI.getById,
-    regenerateWorksheetSection: worksheetAPI.regenerateSection
+    regenerateWorksheetSection: worksheetAPI.regenerateSection,
+
+    // Admin
+    getAdminStats: (token) => api.get('/admin/stats', {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    getAdminUsers: (page = 1, limit = 10, token) => api.get(`/admin/users?page=${page}&limit=${limit}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+
+    // Universities
+    getUniversities: () => api.get('/universities'), // Public
+    getAllUniversities: (token) => api.get('/universities/all', { // Admin
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    createUniversity: (formData, token) => api.post('/universities', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+            Authorization: `Bearer ${token}`
+        }
+    }),
+    deleteUniversity: (id, token) => api.delete(`/universities/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+    retryAnalysis: (id, token) => api.post(`/universities/${id}/analyze`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
 };
 
 export default unifiedAPI;
