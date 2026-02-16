@@ -102,109 +102,155 @@ const AdminDashboard = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="saas-main">
-                <header className="saas-navbar">
-                    <div className="flex items-center gap-4">
-                        <button className="md:hidden p-2 text-gray-500" onClick={() => setSidebarOpen(true)}>
-                            <Menu size={24} />
-                        </button>
-                        <div className="nav-search hidden md:block">
-                            <Search className="search-icon" />
-                            <input type="text" placeholder="Search resources..." className="search-input" />
-                        </div>
-                    </div>
-                    <div className="nav-actions">
-                        <button className="icon-btn" onClick={fetchStats} title="Refresh Stats"><Zap size={20} className={loading ? "animate-pulse" : ""} /></button>
-                        <button className="icon-btn"><Bell size={20} /></button>
-                        <div className="w-px h-6 bg-gray-200"></div>
-                        <button className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
-                            <User size={18} />
-                            <span className="hidden sm:inline">Profile</span>
-                        </button>
-                    </div>
-                </header>
+           <main className="saas-main">
+    <header className="saas-navbar">
+        <div className="flex items-center gap-4">
+            <button className="md:hidden p-2 text-gray-500" onClick={() => setSidebarOpen(true)}>
+                <Menu size={24} />
+            </button>
+            <div className="nav-search hidden md:block">
+                <Search className="search-icon" />
+                <input type="text" placeholder="Search resources..." className="search-input" />
+            </div>
+        </div>
+        <div className="nav-actions">
+            <button className="icon-btn" onClick={fetchStats} title="Refresh Stats"><Zap size={20} className={loading ? "animate-pulse" : ""} /></button>
+            <button className="icon-btn"><Bell size={20} /></button>
+            <div className="w-px h-6 bg-gray-200"></div>
+            <button className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                <User size={18} />
+                <span className="hidden sm:inline">Profile</span>
+            </button>
+        </div>
+    </header>
 
-                <div className="dashboard-content">
-                    {activeTab === 'universities' && <UniversityManager getToken={getToken} />}
-                    {activeTab === 'users' && <UserManager getToken={getToken} />}
-                    {activeTab === 'ai' && <AIIntegrations stats={stats} />}
+    <div className="dashboard-content">
+        {activeTab === 'universities' && <UniversityManager getToken={getToken} />}
+        {activeTab === 'users' && <UserManager getToken={getToken} />}
+        {activeTab === 'ai' && <AIIntegrations stats={stats} />}
 
-                    {/* Placeholder Logic */}
-                    {activeTab === 'settings' && (
-                        <div className="p-8 text-center text-gray-400">
-                            <Settings size={48} className="mx-auto mb-3 opacity-20" />
-                            <p>Admin settings coming soon.</p>
-                        </div>
-                    )}
+        {/* Placeholder Logic */}
+        {activeTab === 'settings' && (
+            <div className="p-8 text-center text-gray-400">
+                <Settings size={48} className="mx-auto mb-3 opacity-20" />
+                <p>Admin settings coming soon.</p>
+            </div>
+        )}
 
-                    {activeTab === 'overview' && (
-                        <>
-                            <div className="page-header">
-                                <h1 className="page-title">Dashboard Overview</h1>
-                                <p className="page-subtitle">Real-time system monitoring and user activity.</p>
-                            </div>
-
-                            <div className="stats-grid">
-                                <StatsCard
-                                    icon={Users}
-                                    label="Total Users"
-                                    value={stats?.totalUsers || "..."}
-                                    trend="Actual"
-                                />
-                                <StatsCard
-                                    icon={Zap}
-                                    label="AI Usage"
-                                    value={stats?.monthlyUsage || 0}
-                                    trend="This Month"
-                                />
-                                <StatsCard
-                                    icon={BookOpen}
-                                    label="Institutions"
-                                    value={stats?.totalUniversities || "..."}
-                                    trend="Active"
-                                />
-                                <StatsCard
-                                    icon={FileText}
-                                    label="Worksheets"
-                                    value={stats?.totalWorksheets || "..."}
-                                    trend="Total"
-                                />
-                            </div>
-
-                            <div className="charts-grid">
-                                <div className="chart-card">
-                                    <h3 className="chart-title">Weekly Generation</h3>
-                                    <div className="css-bar-chart">
-                                        {barData.map((d, i) => (
-                                            <div key={i} className="bar-col">
-                                                <div className="bar-fill" style={{ height: `${d.value}%` }}></div>
-                                                <span className="bar-label">{d.label}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="chart-card">
-                                    <h3 className="chart-title">Platform Growth</h3>
-                                    <div className="flex-1 flex items-center justify-center p-4">
-                                        <svg viewBox="0 0 100 50" className="w-full h-full opacity-75">
-                                            <polyline fill="none" stroke="#6366f1" strokeWidth="2" points="0,40 15,35 30,38 45,20 60,25 75,10 90,5 100,2" />
-                                            <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.2" />
-                                                <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
-                                            </linearGradient>
-                                            <polygon fill="url(#grad)" points="0,40 15,35 30,38 45,20 60,25 75,10 90,5 100,2 100,50 0,50" opacity="0.5" />
-                                        </svg>
-                                    </div>
-                                    <div className="text-center mt-2">
-                                        <p className="text-2xl font-bold text-gray-900">{stats?.totalUsers || 0}</p>
-                                        <p className="text-xs text-gray-500 uppercase tracking-widest font-bold opacity-40">System Users</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
+        {activeTab === 'overview' && (
+            <>
+                {/* SEO Content Section */}
+                <div className="page-header">
+                    <h1 className="page-title">Make Worksheet Online Free - AI Worksheet Maker for College Students</h1>
+                    <p className="page-subtitle">Create college and university worksheets instantly with our AI-powered worksheet maker. Perfect for CU students! Generate practical files with screenshots, code, and theory in minutes.</p>
                 </div>
-            </main>
+
+                {/* SEO Features Grid */}
+                <div className="stats-grid mb-8">
+                    <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <h3 className="font-semibold text-gray-900 mb-2">Make Worksheet Online Instantly</h3>
+                        <p className="text-sm text-gray-600">Generate professional worksheets in minutes. Best free worksheet maker for college and university students.</p>
+                    </div>
+                    <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <h3 className="font-semibold text-gray-900 mb-2">100% Free for CU Students</h3>
+                        <p className="text-sm text-gray-600">No registration required. Create unlimited worksheets online completely free.</p>
+                    </div>
+                    <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <h3 className="font-semibold text-gray-900 mb-2">AI-Powered Generation</h3>
+                        <p className="text-sm text-gray-600">Smart AI creates accurate, plagiarism-free content. Perfect for college practical files.</p>
+                    </div>
+                    <div className="p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+                        <h3 className="font-semibold text-gray-900 mb-2">Add Screenshots & Code</h3>
+                        <p className="text-sm text-gray-600">Easily add images, code snippets, and theory to your worksheets.</p>
+                    </div>
+                </div>
+
+                {/* Original Stats Section */}
+                <div className="page-header">
+                    <h2 className="text-2xl font-bold text-gray-900">Dashboard Overview</h2>
+                    <p className="page-subtitle">Real-time system monitoring and user activity.</p>
+                </div>
+
+                <div className="stats-grid">
+                    <StatsCard
+                        icon={Users}
+                        label="Total Users"
+                        value={stats?.totalUsers || "..."}
+                        trend="Actual"
+                    />
+                    <StatsCard
+                        icon={Zap}
+                        label="AI Usage"
+                        value={stats?.monthlyUsage || 0}
+                        trend="This Month"
+                    />
+                    <StatsCard
+                        icon={BookOpen}
+                        label="Institutions"
+                        value={stats?.totalUniversities || "..."}
+                        trend="Active"
+                    />
+                    <StatsCard
+                        icon={FileText}
+                        label="Worksheets"
+                        value={stats?.totalWorksheets || "..."}
+                        trend="Total"
+                    />
+                </div>
+
+                <div className="charts-grid">
+                    <div className="chart-card">
+                        <h3 className="chart-title">Weekly Generation</h3>
+                        <div className="css-bar-chart">
+                            {barData.map((d, i) => (
+                                <div key={i} className="bar-col">
+                                    <div className="bar-fill" style={{ height: `${d.value}%` }}></div>
+                                    <span className="bar-label">{d.label}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="chart-card">
+                        <h3 className="chart-title">Platform Growth</h3>
+                        <div className="flex-1 flex items-center justify-center p-4">
+                            <svg viewBox="0 0 100 50" className="w-full h-full opacity-75">
+                                <polyline fill="none" stroke="#6366f1" strokeWidth="2" points="0,40 15,35 30,38 45,20 60,25 75,10 90,5 100,2" />
+                                <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#6366f1" stopOpacity="0.2" />
+                                    <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
+                                </linearGradient>
+                                <polygon fill="url(#grad)" points="0,40 15,35 30,38 45,20 60,25 75,10 90,5 100,2 100,50 0,50" opacity="0.5" />
+                            </svg>
+                        </div>
+                        <div className="text-center mt-2">
+                            <p className="text-2xl font-bold text-gray-900">{stats?.totalUsers || 0}</p>
+                            <p className="text-xs text-gray-500 uppercase tracking-widest font-bold opacity-40">System Users</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SEO FAQ Section */}
+                <div className="mt-8 p-6 bg-white rounded-lg shadow-sm border border-gray-200">
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="font-semibold text-gray-900 mb-1">Is this worksheet maker really free?</h3>
+                            <p className="text-sm text-gray-600">Yes! MakeWorksheet.Online is 100% free for all college and university students. No hidden charges ever.</p>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-gray-900 mb-1">Can I make worksheets online without registration?</h3>
+                            <p className="text-sm text-gray-600">Absolutely! Start creating worksheets immediately - no sign-up required.</p>
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-gray-900 mb-1">Is this suitable for CU students?</h3>
+                            <p className="text-sm text-gray-600">Perfect for CU and all university students. Create practical files with AI assistance.</p>
+                        </div>
+                    </div>
+                </div>
+            </>
+        )}
+    </div>
+</main>
         </div>
     );
 };

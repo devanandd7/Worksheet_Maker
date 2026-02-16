@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWorksheet } from '../context/WorksheetContext';
 import { useGlobalConfig } from '../context/GlobalConfigContext';
 import { toast } from 'react-toastify';
-import { Sparkles, Loader, FileText, AlertCircle, Zap, Image as ImageIcon, X, Info, Upload, CheckCircle, MessageCircle } from 'lucide-react';
+import { Sparkles, Loader, FileText, AlertCircle, Zap, Image as ImageIcon, X, Info, Upload, CheckCircle, MessageCircle, FilePlus } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 import api from '../services/api';
 
@@ -560,6 +560,24 @@ const GenerateWorksheet = () => {
                                     <Sparkles size={12} />
                                     Using preset header and template. Manual upload disabled.
                                 </p>
+                            )}
+
+                            {/* Relocated Upload Button for "Other" University */}
+                            {selectedUniversity === 'other' && (
+                                <div className="mt-4 pt-3 border-t border-indigo-100 flex flex-col sm:flex-row items-center justify-between gap-3 animate-slide-up">
+                                    <div className="flex items-center gap-2 text-indigo-700">
+                                        <Upload size={18} />
+                                        <span className="text-sm font-medium">Need to set up a new university format?</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/upload-sample')}
+                                        className="btn btn-primary btn-sm flex items-center gap-2"
+                                    >
+                                        <FilePlus size={16} />
+                                        Upload Sample Template
+                                    </button>
+                                </div>
                             )}
                         </div>
 

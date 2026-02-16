@@ -88,7 +88,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Upload Sample */}
-                <div className="overview-card animate-slide-up delay-200">
+                {/* <div className="overview-card animate-slide-up delay-200">
                     <div className="card-content">
                         <div className="card-icon-wrapper icon-purple">
                             <Upload />
@@ -101,7 +101,7 @@ const Dashboard = () => {
                             Upload PDF <ArrowRight size={16} />
                         </Link>
                     </div>
-                </div>
+                </div> */}
 
                 {/* History */}
                 <div className="overview-card animate-slide-up delay-300">

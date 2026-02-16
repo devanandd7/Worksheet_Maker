@@ -48,7 +48,7 @@ const Landing = () => {
                 <div className="container text-center">
                     <div className="fade-in">
                         <h1 className="hero-title">
-                            Generate College & University Worksheets
+                            Generate College & University Worksheets Free
                             <br />
                             <span className="gradient-text">Powered by AI</span>
                         </h1>
@@ -164,24 +164,24 @@ const Landing = () => {
                     <div className="steps-container">
                         <div className="step">
                             <div className="step-number">1</div>
-                            <h3>Upload Sample Worksheet</h3>
-                            <p>Upload ONE sample worksheet PDF from your university. AI analyzes the structure.</p>
+                            <h3>Register Yourself</h3>
+                            <p>Quickly sign up or log in to get started with creating your professional worksheets.</p>
                         </div>
 
                         <div className="step-arrow">→</div>
 
                         <div className="step">
                             <div className="step-number">2</div>
-                            <h3>Enter Topic & Details</h3>
-                            <p>Provide your topic, syllabus scope, and difficulty level. AI does the rest.</p>
+                            <h3>Generate Worksheet</h3>
+                            <p>Provide your topic and university details. AI creates a perfect worksheet in minutes.</p>
                         </div>
 
                         <div className="step-arrow">→</div>
 
                         <div className="step">
                             <div className="step-number">3</div>
-                            <h3>Review & Download</h3>
-                            <p>Edit if needed, add screenshots, and download your professional PDF.</p>
+                            <h3>Get Your Worksheet</h3>
+                            <p>Review, add any custom images, and download your unique plagiarism-free PDF.</p>
                         </div>
                     </div>
                 </div>

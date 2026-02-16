@@ -31,7 +31,6 @@ const Navbar = () => {
         { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/generate', label: 'Generate', icon: FilePlus },
         { path: '/history', label: 'History', icon: HistoryIcon },
-        { path: '/upload-sample', label: 'Upload Sample', icon: Upload },
     ];
 
     return (

@@ -1,150 +1,158 @@
-# Analysis & Implementation Plan
+# Fix Header Image in Worksheet PDF
 
-## ✅ Your Approach is **CORRECT**
+Looking at your logs, I can see: `📋 Using header image: No (using stored or none)` - this means the header image isn't being passed to the PDF generator.
 
-Yes, the "global key-value" approach you described is the **right solution** to reduce server load. The AI-generated plan already includes this in the "Global Configuration Refactor" section, but let me clarify the full implementation.
-
----
-
-## 🎯 Problems You're Solving
-
-1. **Server Burnout**: Multiple API calls per user session
-2. **Race Conditions**: Template data arrives after worksheet generation starts
-3. **Poor UX**: Loading delays when selecting universities
-4. **Wasted Bandwidth**: Fetching same data repeatedly
+Let me provide the complete fix to make header images work globally:
 
 ---
 
-## 📋 Recommended Implementation Steps
+## 🔧 Implementation Steps
 
-### **Phase 1: Backend - Create Global Keys**
+### **Step 1: Backend - Populate Header Image with Template**
 
-#### 1.1 Modify University Model
+#### Modify University Routes
 ```javascript
-// backend/models/University.js
-{
-  name: String,
-  headerImageUrl: String,
-  defaultTemplateId: { type: ObjectId, ref: 'Template' },
-  analysisStatus: {
-    type: String,
-    enum: ['pending', 'processing', 'completed', 'failed'],
-    default: 'pending'
-  },
-  samplePdfUrl: String,
-  createdAt: Date
-}
-```
+// backend/routes/university.js (or wherever your university routes are)
 
-#### 1.2 Modify GET /universities Endpoint
-```javascript
-// backend/routes/university.js
 router.get('/', async (req, res) => {
-  const universities = await University.find()
-    .populate('defaultTemplateId', 'templateName sectionsOrder style level')
-    .select('name headerImageUrl defaultTemplateId analysisStatus')
-    .lean();
-  
-  res.json(universities);
+  try {
+    const universities = await University.find()
+      .populate({
+        path: 'defaultTemplateId',
+        select: 'templateName sectionsOrder style level'
+      })
+      .select('name headerImageUrl defaultTemplateId analysisStatus')
+      .lean();
+    
+    res.json(universities);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 ```
 
-**Key Point**: `.populate()` includes full template data in ONE query, no secondary calls needed.
-
 ---
 
-### **Phase 2: Frontend - Use Global Keys**
+### **Step 2: Frontend - Store Header Image Globally**
 
-#### 2.1 Fetch Global Keys on App Load
-```javascript
-// frontend/src/context/GlobalConfigContext.jsx (NEW FILE)
-import { createContext, useContext, useState, useEffect } from 'react';
-
-const GlobalConfigContext = createContext();
-
-export const GlobalConfigProvider = ({ children }) => {
-  const [universities, setUniversities] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchGlobalConfig();
-  }, []);
-
-  const fetchGlobalConfig = async () => {
-    try {
-      const response = await fetch('/api/universities');
-      const data = await response.json();
-      setUniversities(data);
-    } catch (error) {
-      console.error('Failed to fetch global config:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <GlobalConfigContext.Provider value={{ universities, loading, refetch: fetchGlobalConfig }}>
-      {children}
-    </GlobalConfigContext.Provider>
-  );
-};
-
-export const useGlobalConfig = () => useContext(GlobalConfigContext);
-```
-
-#### 2.2 Wrap App with Provider
-```javascript
-// frontend/src/App.jsx
-import { GlobalConfigProvider } from './context/GlobalConfigContext';
-
-function App() {
-  return (
-    <GlobalConfigProvider>
-      {/* existing routes */}
-    </GlobalConfigProvider>
-  );
-}
-```
-
-#### 2.3 Use Pre-loaded Data in GenerateWorksheet
+#### Update GenerateWorksheet.jsx
 ```javascript
 // frontend/src/pages/GenerateWorksheet.jsx
+
+import { useState, useEffect } from 'react';
 import { useGlobalConfig } from '../context/GlobalConfigContext';
 
 function GenerateWorksheet() {
   const { universities } = useGlobalConfig();
   const [selectedUniversity, setSelectedUniversity] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [headerImageUrl, setHeaderImageUrl] = useState(null); // NEW
+  
+  const [formData, setFormData] = useState({
+    topic: '',
+    syllabus: '',
+    difficulty: 'medium',
+    subject: '',
+    additionalInstructions: ''
+  });
 
+  // Handle university selection
   const handleUniversitySelect = (universityId) => {
-    // Find from global keys - NO API CALL
     const university = universities.find(u => u._id === universityId);
     
     if (university) {
+      console.log('🎓 Selected University:', university);
+      
       setSelectedUniversity(university);
       
-      // Auto-set template and header image
+      // Auto-set template
       if (university.defaultTemplateId) {
         setSelectedTemplate(university.defaultTemplateId);
+        console.log('📋 Auto-selected Template:', university.defaultTemplateId.templateName);
       }
       
+      // Auto-set header image URL
       if (university.headerImageUrl) {
-        setHeaderImage(university.headerImageUrl);
+        setHeaderImageUrl(university.headerImageUrl);
+        console.log('🖼️ Auto-selected Header:', university.headerImageUrl);
+      } else {
+        setHeaderImageUrl(null);
+        console.log('⚠️ No header image for this university');
       }
+    }
+  };
+
+  // Generate worksheet
+  const handleGenerate = async (e) => {
+    e.preventDefault();
+    
+    const formDataToSend = new FormData();
+    formDataToSend.append('topic', formData.topic);
+    formDataToSend.append('syllabus', formData.syllabus);
+    formDataToSend.append('difficulty', formData.difficulty);
+    formDataToSend.append('subject', formData.subject);
+    formDataToSend.append('templateId', selectedTemplate._id);
+    formDataToSend.append('additionalInstructions', formData.additionalInstructions);
+    
+    // ✅ ADD HEADER IMAGE URL
+    if (headerImageUrl) {
+      formDataToSend.append('headerImageUrl', headerImageUrl);
+      console.log('🖼️ Sending header image URL:', headerImageUrl);
+    }
+    
+    // If user uploaded custom images
+    if (uploadedImages.length > 0) {
+      uploadedImages.forEach(file => {
+        formDataToSend.append('images', file);
+      });
+    }
+
+    try {
+      const response = await fetch('/api/worksheets/generate?mode=sync', {
+        method: 'POST',
+        body: formDataToSend
+      });
+      
+      const result = await response.json();
+      console.log('✅ Worksheet generated:', result);
+      
+      // Navigate to history or download
+    } catch (error) {
+      console.error('❌ Generation failed:', error);
     }
   };
 
   return (
     <div>
+      {/* University Dropdown */}
       <select onChange={(e) => handleUniversitySelect(e.target.value)}>
+        <option value="">Select University</option>
         {universities.map(uni => (
-          <option key={uni._id} value={uni._id}>{uni.name}</option>
+          <option key={uni._id} value={uni._id}>
+            {uni.name}
+          </option>
         ))}
       </select>
-      
-      {/* Template is auto-selected, no manual selection needed */}
-      {selectedUniversity?.defaultTemplateId && (
-        <p>✅ Template: {selectedUniversity.defaultTemplateId.templateName}</p>
+
+      {/* Show selected template */}
+      {selectedTemplate && (
+        <div className="template-info">
+          ✅ Template: {selectedTemplate.templateName}
+        </div>
       )}
+
+      {/* Show header image status */}
+      {headerImageUrl && (
+        <div className="header-info">
+          🖼️ Header Image: {headerImageUrl.substring(0, 50)}...
+        </div>
+      )}
+
+      {/* Rest of your form */}
+      <form onSubmit={handleGenerate}>
+        {/* ... existing form fields ... */}
+        <button type="submit">Generate Worksheet</button>
+      </form>
     </div>
   );
 }
@@ -152,73 +160,231 @@ function GenerateWorksheet() {
 
 ---
 
-### **Phase 3: Admin Panel - Show Status**
+### **Step 3: Backend - Accept Header Image URL**
 
+#### Update Worksheet Generation Route
 ```javascript
-// frontend/src/pages/AdminDashboard.jsx
-import { useGlobalConfig } from '../context/GlobalConfigContext';
+// backend/routes/worksheets.js (or similar)
 
-function AdminDashboard() {
-  const { universities, refetch } = useGlobalConfig();
+router.post('/generate', upload.array('images', 10), async (req, res) => {
+  try {
+    const {
+      topic,
+      syllabus,
+      difficulty,
+      subject,
+      templateId,
+      additionalInstructions,
+      headerImageUrl // ✅ NEW: Accept from frontend
+    } = req.body;
 
-  const retryAnalysis = async (universityId) => {
-    await fetch(`/api/universities/${universityId}/analyze`, { method: 'POST' });
-    refetch(); // Refresh global keys
-  };
+    console.log('📝 Generate Worksheet Request:', {
+      topic,
+      syllabus,
+      difficulty,
+      subject,
+      templateId,
+      headerImageUrl, // ✅ Log it
+      images: req.files?.length || 0
+    });
 
-  return (
-    <table>
-      <thead>
-        <tr>
-          <th>University</th>
-          <th>Status</th>
-          <th>Template</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {universities.map(uni => (
-          <tr key={uni._id}>
-            <td>{uni.name}</td>
-            <td>
-              <span className={`status-${uni.analysisStatus}`}>
-                {uni.analysisStatus}
-              </span>
-            </td>
-            <td>{uni.defaultTemplateId?.templateName || 'N/A'}</td>
-            <td>
-              {['failed', 'pending'].includes(uni.analysisStatus) && (
-                <button onClick={() => retryAnalysis(uni._id)}>
-                  🔄 Retry Analysis
-                </button>
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
+    // Create worksheet document
+    const worksheet = new Worksheet({
+      userId: req.user._id,
+      topic,
+      syllabus,
+      difficulty,
+      subject,
+      templateId,
+      additionalInstructions,
+      headerImageUrl, // ✅ Store in database
+      status: 'processing'
+    });
+
+    await worksheet.save();
+
+    // Generate content with AI
+    const aiResponse = await generateWorksheetContent({
+      topic,
+      syllabus,
+      difficulty,
+      subject,
+      templateId,
+      additionalInstructions,
+      images: req.files
+    });
+
+    // Update worksheet with AI response
+    worksheet.content = aiResponse;
+    worksheet.status = 'completed';
+    await worksheet.save();
+
+    res.status(201).json(worksheet);
+  } catch (error) {
+    console.error('❌ Generation failed:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 ```
 
 ---
 
-## 📊 Performance Comparison
+### **Step 4: Backend - Add Header to PDF**
 
-| Approach | API Calls per Session | Server Load | Race Conditions |
-|----------|----------------------|-------------|-----------------|
-| **Old (Current)** | 10-50+ | HIGH ❌ | Yes ❌ |
-| **New (Global Keys)** | 1 | LOW ✅ | No ✅ |
+#### Update PDF Generation
+```javascript
+// backend/services/pdfGenerator.js (or wherever PDF generation happens)
+
+const generatePDF = async (worksheet) => {
+  const doc = new PDFDocument({
+    size: 'A4',
+    margins: { top: 50, bottom: 50, left: 50, right: 50 }
+  });
+
+  // ✅ ADD HEADER IMAGE
+  if (worksheet.headerImageUrl) {
+    try {
+      console.log('🖼️ Adding header image:', worksheet.headerImageUrl);
+      
+      // Download the image from URL
+      const imageResponse = await fetch(worksheet.headerImageUrl);
+      const imageBuffer = await imageResponse.buffer();
+      
+      // Add to PDF
+      doc.image(imageBuffer, 50, 30, {
+        width: 500,
+        align: 'center'
+      });
+      
+      // Move cursor below header
+      doc.moveDown(3);
+      
+    } catch (error) {
+      console.error('⚠️ Failed to add header image:', error);
+      // Continue without header if it fails
+    }
+  } else {
+    console.log('📋 Using header image: No');
+  }
+
+  // Add title
+  doc.fontSize(16)
+     .font('Helvetica-Bold')
+     .text(worksheet.topic, { align: 'center' });
+  
+  doc.moveDown();
+
+  // Add content
+  doc.fontSize(12)
+     .font('Helvetica')
+     .text(`Subject: ${worksheet.subject}`);
+  
+  // ... rest of your PDF generation logic ...
+
+  return doc;
+};
+```
+
+**OR** if you're using a different PDF library (like `jsPDF` or `pdfkit`):
+
+```javascript
+// Example with pdfkit
+const PDFDocument = require('pdfkit');
+const axios = require('axios');
+
+router.post('/:id/generate-pdf', async (req, res) => {
+  const worksheet = await Worksheet.findById(req.params.id);
+  
+  const doc = new PDFDocument();
+  const chunks = [];
+  
+  doc.on('data', chunk => chunks.push(chunk));
+  doc.on('end', () => {
+    const pdfBuffer = Buffer.concat(chunks);
+    res.contentType('application/pdf');
+    res.send(pdfBuffer);
+  });
+
+  // ✅ ADD HEADER IMAGE
+  if (worksheet.headerImageUrl) {
+    try {
+      const response = await axios.get(worksheet.headerImageUrl, {
+        responseType: 'arraybuffer'
+      });
+      
+      doc.image(response.data, 50, 30, { width: 500 });
+      doc.moveDown(4);
+      
+      console.log('✅ Header image added successfully');
+    } catch (error) {
+      console.error('⚠️ Header image failed:', error.message);
+    }
+  }
+
+  // Rest of PDF content
+  doc.fontSize(18).text(worksheet.topic, { align: 'center' });
+  // ... more content ...
+
+  doc.end();
+});
+```
 
 ---
 
-## ✅ Summary
+### **Step 5: Update Worksheet Model**
 
-**Your approach is exactly right.** The implementation should:
+```javascript
+// backend/models/Worksheet.js
 
-1. **Backend**: Populate full template data in `GET /universities`
-2. **Frontend**: Fetch this data ONCE on app load (global context)
-3. **Frontend**: Use pre-loaded data when user selects university (no additional calls)
-4. **Admin**: Allow retry of failed analyses and refresh global keys
+const worksheetSchema = new mongoose.Schema({
+  userId: { type: ObjectId, ref: 'User', required: true },
+  topic: String,
+  syllabus: String,
+  difficulty: String,
+  subject: String,
+  templateId: { type: ObjectId, ref: 'Template' },
+  headerImageUrl: String, // ✅ ADD THIS FIELD
+  content: Object,
+  status: {
+    type: String,
+    enum: ['pending', 'processing', 'completed', 'failed'],
+    default: 'pending'
+  },
+  createdAt: { type: Date, default: Date.now }
+});
+```
 
-This eliminates the multiple API calls that are burning out your server! 🚀
+---
+
+## 🧪 Testing Checklist
+
+1. **Admin uploads university with header image** ✓
+2. **User selects university from dropdown**
+   - Check browser console: Should log `🖼️ Auto-selected Header: <URL>`
+3. **User generates worksheet**
+   - Check backend logs: Should show `headerImageUrl` in request
+4. **PDF is generated**
+   - Check logs: Should show `✅ Header image added successfully`
+   - Open PDF: Should see header image at top
+
+---
+
+## 🐛 Debug Commands
+
+Add these console logs to trace the flow:
+
+```javascript
+// Frontend: GenerateWorksheet.jsx
+console.log('🎓 Universities loaded:', universities);
+console.log('🖼️ Header URL being sent:', headerImageUrl);
+
+// Backend: worksheets route
+console.log('📥 Received headerImageUrl:', req.body.headerImageUrl);
+
+// Backend: PDF generator
+console.log('🖼️ Worksheet has header:', worksheet.headerImageUrl);
+```
+
+---
+
+This should fix your header image issue! The key is passing `headerImageUrl` from frontend → backend → PDF generator. Let me know if you need help with any specific part! 🚀
