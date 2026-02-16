@@ -158,12 +158,12 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
     /**
      * ✅ NEW: Smart detection if code is needed for the topic
      * @param {String} topic 
-     * @param {String} syllabus 
      * @param {String} additionalInstructions 
+     * @param {Array<String>} sections - Array of requested sections
      * @returns {Boolean}
      */
-    _isCodeRequired(topic, syllabus, additionalInstructions) {
-        const combinedText = `${topic} ${syllabus} ${additionalInstructions}`.toLowerCase();
+    _isCodeRequired(topic, additionalInstructions, sections = []) {
+        const combinedText = `${topic} ${additionalInstructions}`.toLowerCase();
 
         // Code is REQUIRED if mentions:
         const codeKeywords = [
@@ -175,16 +175,28 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
         ];
 
         // Code is NOT required if purely theoretical:
-        const theoreticalKeywords = [
-            'theory', 'concept', 'definition', 'explain', 'describe',
-            'analyze', 'discuss', 'compare', 'history', 'overview',
-            'introduction', 'basics', 'fundamentals', 'principles'
-        ];
+        // Check if code is explicitly requested in sections
+        const isCodeSectionRequested = sections.some(s => s.toLowerCase().includes('code') || s.toLowerCase().includes('implementation'));
 
-        const hasCodeKeywords = codeKeywords.some(keyword => combinedText.includes(keyword));
-        const hasOnlyTheory = theoreticalKeywords.some(keyword => combinedText.includes(keyword)) && !hasCodeKeywords;
+        // Determine if code is required based on topic keywords OR explicit section request
+        const codeKeywordsTopic = ['implement', 'code', 'program', 'script', 'function', 'algorithm', 'develop', 'build', 'create', 'write', 'simulation', 'arduino', 'lcd', 'sensor', 'iot'];
+        const theoreticalKeywords = ['explain', 'describe', 'discuss', 'difference', 'theory', 'concept', 'what is', 'compare'];
 
-        return hasCodeKeywords && !hasOnlyTheory;
+        // FORCE code if section is requested, regardless of topic keywords
+        let codeRequired = isCodeSectionRequested || codeKeywordsTopic.some(keyword => topic.toLowerCase().includes(keyword));
+
+        // Only disable if explicitly theoretical AND code is NOT requested in layout
+        if (theoreticalKeywords.some(keyword => topic.toLowerCase().startsWith(keyword)) && !isCodeSectionRequested) {
+            codeRequired = false;
+        }
+
+        console.log(`🤖 Code Requirement Analysis:
+    - Topic: "${topic}"
+    - Section Requested: ${isCodeSectionRequested}
+    - Keywords Match: ${codeKeywordsTopic.some(keyword => topic.toLowerCase().includes(keyword))}
+    - FINAL DECISION: ${codeRequired ? 'REQUIRED' : 'NOT REQUIRED'}
+    `);
+        return codeRequired;
     }
 
     /**
@@ -246,8 +258,8 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
             // ✅ NEW: Smart detection of code requirement and language
             const codeRequired = this._isCodeRequired(
                 topic,
-                syllabus || '',
-                additionalInstructions || ''
+                additionalInstructions || '',
+                sections || []
             );
             const preferredLanguage = this._extractPreferredLanguage(
                 topic,
@@ -798,6 +810,7 @@ WEB ANALYTICS: Focus on tool usage, screenshots, step-by-step guides (NO code)
 ✓ ALWAYS: Use consistent heading styles
 ✓ ALWAYS: Apply 20px left margin under each heading
 ✓ ALWAYS: Analyze and integrate uploaded images
+✓ ALWAYS: Use HTML lists (<ul>, <ol>, <li>) for any bullet points or numbered steps. NEVER use plain text hyphens or numbers for lists.
 ✓ ALWAYS: Make learningOutcome the LAST field
 
 Common Mistakes to Avoid:

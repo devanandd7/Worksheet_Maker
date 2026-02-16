@@ -1060,6 +1060,7 @@ const GenerateWorksheet = () => {
                                         </span>
                                     </label>
 
+                                    {/*
                                     <label className="flex items-center gap-2 cursor-pointer group">
                                         <div className="relative flex items-center">
                                             <input
@@ -1073,6 +1074,7 @@ const GenerateWorksheet = () => {
                                             Generate PDF
                                         </span>
                                     </label>
+                                    */}
                                 </div>
                                 <p className="text-xs text-gray-500 mt-2 italic">
                                     {exportOptions.docs && "DOCS file will download automatically after generation."}

@@ -162,16 +162,22 @@ class DocxGeneratorService {
                 }));
 
                 if (source) {
+                    // Split code by newlines to preserve formatting
+                    const codeLines = source.split(/\r?\n/);
+                    const codeRuns = codeLines.map((line, index) => {
+                        return new TextRun({
+                            text: line,
+                            font: 'Courier New',
+                            size: 18,
+                            break: index < codeLines.length - 1 ? 1 : 0
+                        });
+                    });
+
                     children.push(new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: source,
-                                font: 'Courier New',
-                                size: 18,
-                            }),
-                        ],
-                        shading: { type: 'solid', fill: 'F5F5F5' },
+                        children: codeRuns,
+                        shading: { type: 'solid', fill: 'F5F5F5' }, // Light gray background
                         spacing: { before: 100, after: 100 },
+                        alignment: AlignmentType.LEFT,
                     }));
                 }
 
@@ -343,6 +349,27 @@ class DocxGeneratorService {
             .replace(/<\/div>$/i, '')
             .trim();
 
+        // Split by tables to handle them separately
+        // Capturing parentheses include the separator in the result
+        const parts = cleaned.split(/(<table[^>]*>[\s\S]*?<\/table>)/gi);
+
+        for (const part of parts) {
+            if (part.match(/^<table/i)) {
+                // It's a table
+                this.addTable(children, part);
+            } else {
+                // It's regular content (paragraphs, lists, etc)
+                this.processRegularContent(children, part, spacing);
+            }
+        }
+    }
+
+    /**
+     * Process regular non-table content (lists, paragraphs)
+     */
+    processRegularContent(children, content, spacing) {
+        let cleaned = content;
+
         // ========================================
         // HANDLE UNORDERED LISTS (bullets)
         // ========================================
@@ -396,11 +423,13 @@ class DocxGeneratorService {
         }
 
         // ========================================
-        // HANDLE REGULAR PARAGRAPHS
+        // HANDLE REGULAR PARAGRAPHS & LINE BREAKS
         // ========================================
+        // Split by <p>, <br>, and newlines, then filter empty strings
         const paragraphs = cleaned
-            .split(/<\/?p[^>]*>/gi)
-            .filter(p => p.trim() && !p.match(/^<\/?[a-z]/i));
+            .split(/<\/?p[^>]*>|<br\s*\/?>|\n/gi)
+            .map(p => p.trim())
+            .filter(p => p && !p.match(/^<\/?[a-z]/i)); // Remove leftover tags if any
 
         paragraphs.forEach(para => {
             const trimmed = para.trim();
@@ -415,6 +444,70 @@ class DocxGeneratorService {
                 }));
             }
         });
+    }
+
+    /**
+     * Parse and add HTML Table to children
+     */
+    addTable(children, tableHtml) {
+        const rows = [];
+
+        // Find all rows (tr)
+        const trMatches = tableHtml.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi);
+        if (!trMatches) return;
+
+        trMatches.forEach(tr => {
+            const cells = [];
+
+            // Find all cells (td or th)
+            const tdMatches = tr.match(/<(td|th)[^>]*>[\s\S]*?<\/\1>/gi);
+            if (!tdMatches) return;
+
+            tdMatches.forEach(td => {
+                // Extract content
+                const content = td.replace(/<(td|th)[^>]*>([\s\S]*?)<\/\1>/i, '$2').trim();
+                const isHeader = td.match(/^<th/i);
+
+                const textRuns = this.parseInlineHTML(content);
+
+                // Add cell to row
+                cells.push(new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: textRuns.length > 0 ? textRuns : [new TextRun({ text: content })],
+                            alignment: isHeader ? AlignmentType.CENTER : AlignmentType.LEFT,
+                        })
+                    ],
+                    verticalAlign: AlignmentType.CENTER,
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    shading: isHeader ? { fill: "E0E0E0", type: "solid" } : undefined, // Gray background for headers
+                    width: {
+                        size: 100 / tdMatches.length, // Distribute width evenly
+                        type: WidthType.PERCENTAGE,
+                    },
+                }));
+            });
+
+            if (cells.length > 0) {
+                rows.push(new TableRow({
+                    children: cells,
+                }));
+            }
+        });
+
+        if (rows.length > 0) {
+            children.push(new Table({
+                rows: rows,
+                width: {
+                    size: 100,
+                    type: WidthType.PERCENTAGE,
+                },
+                margins: { top: 100, bottom: 100 },
+            }));
+
+            // Add spacing after table
+            children.push(new Paragraph({ spacing: { after: 200 } }));
+        }
     }
 
     /**

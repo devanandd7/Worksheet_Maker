@@ -456,6 +456,8 @@ const WorksheetPreview = () => {
                     History
                 </button>
 
+                {/* PDF Logic DISABLED - Replacing with DOCX Action */}
+                {/* 
                 {worksheet.pdfUrl ? (
                     <>
                         <a
@@ -485,7 +487,39 @@ const WorksheetPreview = () => {
                         {generatingPDF ? <Loader size={18} className="spinner" /> : <DownloadIcon size={18} />}
                         {generatingPDF ? ' Generating...' : ' Generate Final PDF'}
                     </button>
-                )}
+                )} 
+                */}
+
+                {/* New DOCX-Only Action */}
+                <button
+                    onClick={async () => {
+                        try {
+                            toast.info('Preparing download...');
+                            const token = await getToken();
+                            const response = await api.downloadWorksheetDocx(worksheet._id, token);
+
+                            // Create blob and download
+                            const url = window.URL.createObjectURL(new Blob([response.data]));
+                            const link = document.createElement('a');
+                            link.href = url;
+                            const fileName = `${worksheet.topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_worksheet.docx`;
+                            link.setAttribute('download', fileName);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.remove();
+                            window.URL.revokeObjectURL(url);
+                            toast.success('Download started!');
+                        } catch (err) {
+                            console.error('Download failed', err);
+                            toast.error('Failed to download DOCX');
+                        }
+                    }}
+                    className="btn btn-primary rounded-full shadow-lg px-6"
+                    style={{ backgroundColor: '#2b579a', borderColor: '#2b579a' }} // Word Blue
+                >
+                    <FileText size={18} />
+                    Download DOCX
+                </button>
             </div>
         </div>
 
