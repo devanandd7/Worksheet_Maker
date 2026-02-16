@@ -10,6 +10,7 @@ import UserAIMemory from '../models/UserAIMemory.js';
 import geminiService from '../services/geminiService.js';
 import cloudinaryService from '../services/cloudinaryService.js';
 import pdfGeneratorService from '../services/pdfGeneratorService.js';
+import docxGeneratorService from '../services/docxGeneratorService.js';
 
 const router = express.Router();
 
@@ -331,15 +332,8 @@ router.post('/generate', auth, upload.fields([{ name: 'images', maxCount: 5 }, {
 
                     console.log(`✅ Worksheet ${worksheet._id} generated successfully in background`);
 
-                    // Auto-generate PDF in background
-                    pdfQueue.add(async () => {
-                        try {
-                            await generatePDFForWorksheet(worksheet._id);
-                            console.log(`✅ PDF generated for worksheet ${worksheet._id}`);
-                        } catch (pdfError) {
-                            console.error(`❌ PDF generation failed for ${worksheet._id}:`, pdfError);
-                        }
-                    }).catch(err => console.error('PDF queue error:', err));
+                    // Note: PDF is NOT auto-generated to save resources
+                    // User can generate PDF on-demand via /api/worksheets/:id/download-pdf route
 
                 } catch (error) {
                     console.error('❌ Background worksheet generation failed:', error);
@@ -684,6 +678,49 @@ router.post('/:id/regenerate-section', auth, [
         res.status(500).json({
             success: false,
             message: error.message || 'Failed to regenerate section'
+        });
+    }
+});
+
+/**
+ * @route   GET /api/worksheets/:id/download-docx
+ * @desc    Download worksheet as DOCX
+ * @access  Private
+ */
+router.get('/:id/download-docx', auth, async (req, res) => {
+    try {
+        const worksheet = await Worksheet.findOne({
+            _id: req.params.id,
+            userId: req.userId
+        }).populate('templateId');
+
+        if (!worksheet) {
+            return res.status(404).json({
+                success: false,
+                message: 'Worksheet not found'
+            });
+        }
+
+        const user = await User.findById(req.userId);
+
+        console.log(`📝 Generating DOCX for worksheet ${req.params.id}...`);
+
+        const docxBuffer = await docxGeneratorService.generateWorksheetDocx(worksheet, user);
+
+        const fileName = `${worksheet.topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_worksheet.docx`;
+
+        res.set({
+            'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Content-Disposition': `attachment; filename="${fileName}"`,
+            'Content-Length': docxBuffer.length
+        });
+
+        res.send(docxBuffer);
+    } catch (error) {
+        console.error('Download DOCX error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to generate DOCX'
         });
     }
 });

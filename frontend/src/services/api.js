@@ -93,6 +93,10 @@ export const worksheetAPI = {
     }),
     regenerateSection: (id, data, token) => api.post(`/worksheets/${id}/regenerate-section`, data, {
         headers: { Authorization: `Bearer ${token}` }
+    }),
+    downloadDocx: (id, token) => api.get(`/worksheets/${id}/download-docx`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
     })
 };
 
@@ -147,6 +151,7 @@ const unifiedAPI = {
     retryAnalysis: (id, token) => api.post(`/universities/${id}/analyze`, {}, {
         headers: { Authorization: `Bearer ${token}` }
     }),
+    downloadWorksheetDocx: worksheetAPI.downloadDocx
 };
 
 export default unifiedAPI;

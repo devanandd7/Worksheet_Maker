@@ -194,15 +194,18 @@ const WorksheetPreview = () => {
         }
     }, [worksheet, setCurrentWorksheet, navigate, getToken]);
 
-    // Handle auto-gen only after worksheet is loaded
+    // REMOVED AUTO-PDF GENERATION: User should explicitly choose when to generate PDF
+    // This respects the user's export format selection (DOCX vs PDF)
+    // Previously, this would auto-generate PDF even when user only wanted DOCX
+    /*
     useEffect(() => {
         if (!loading && worksheet && worksheet._id && !worksheet.pdfUrl && !generatingPDF && !autoGenTriggered) {
-            // ... (rest of logic)
             console.log('Auto-triggering PDF generation for:', worksheet._id);
             setAutoGenTriggered(true);
             handleGeneratePDF();
         }
     }, [worksheet, generatingPDF, autoGenTriggered, loading, handleGeneratePDF]);
+    */
 
     const handleRegenerateSection = async (section) => {
         if (!worksheet) return;

@@ -21,6 +21,10 @@ const GenerateWorksheet = () => {
         subject: user?.defaultSubject || '',
         additionalInstructions: ''
     });
+    const [exportOptions, setExportOptions] = useState({
+        docs: true,
+        pdf: false
+    });
 
     const [templates, setTemplates] = useState([]);
     const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -413,6 +417,29 @@ const GenerateWorksheet = () => {
         disabled: generating
     });
 
+    const handleDownloadDocx = async (worksheetId, topic) => {
+        try {
+            console.log('📄 Starting auto-download for DOCX...');
+            const token = await getToken();
+            const response = await api.downloadWorksheetDocx(worksheetId, token);
+
+            // Create blob and download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            const fileName = `${topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_worksheet.docx`;
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            console.log('✅ DOCX download triggered successfully');
+        } catch (error) {
+            console.error('❌ Failed to download DOCX:', error);
+            toast.error('Failed to auto-download DOCX');
+        }
+    };
+
     const handleGenerate = async (e) => {
         e.preventDefault();
 
@@ -496,6 +523,12 @@ const GenerateWorksheet = () => {
 
             setCurrentWorksheet(response.data.worksheet);
             toast.success('Worksheet generated successfully!');
+
+            // Auto-download DOCX if selected
+            if (exportOptions.docs) {
+                // We don't await this to avoid delaying navigation, but it starts immediately
+                handleDownloadDocx(response.data.worksheet._id, formData.topic);
+            }
 
             // Cleanup previews
             uploadedImages.forEach(file => URL.revokeObjectURL(file.preview));
@@ -1004,6 +1037,48 @@ const GenerateWorksheet = () => {
                                         </ul>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Export Options */}
+                            <div className="card mb-3 p-4 bg-gray-50 border-gray-200">
+                                <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                    <FileText size={16} className="text-primary" />
+                                    Export Options
+                                </h4>
+                                <div className="flex flex-wrap gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={exportOptions.docs}
+                                                onChange={(e) => setExportOptions(prev => ({ ...prev, docs: e.target.checked }))}
+                                                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                            />
+                                        </div>
+                                        <span className={`text-sm font-medium ${exportOptions.docs ? 'text-primary' : 'text-gray-600'}`}>
+                                            Download as DOCS (.docx)
+                                        </span>
+                                    </label>
+
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <div className="relative flex items-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={exportOptions.pdf}
+                                                onChange={(e) => setExportOptions(prev => ({ ...prev, pdf: e.target.checked }))}
+                                                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                            />
+                                        </div>
+                                        <span className={`text-sm font-medium ${exportOptions.pdf ? 'text-primary' : 'text-gray-600'}`}>
+                                            Generate PDF
+                                        </span>
+                                    </label>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2 italic">
+                                    {exportOptions.docs && "DOCS file will download automatically after generation."}
+                                    {exportOptions.docs && exportOptions.pdf && " "}
+                                    {exportOptions.pdf && "PDF will be generated and saved to your history."}
+                                </p>
                             </div>
 
                             {/* Generate Button */}

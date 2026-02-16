@@ -1,0 +1,130 @@
+[33mcommit 18648d5f48a2fe2024b76882657fd7c5a47163cc[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature-login[m[33m)[m
+Author: devanand7 <devanandutkarsh7@gmail.com>
+Date:   Mon Feb 16 13:51:02 2026 +0530
+
+     here i add header file on each every page like students made
+
+[1mdiff --git a/backend/services/pdfGeneratorService.js b/backend/services/pdfGeneratorService.js[m
+[1mindex f0d7d55..f6e0db3 100644[m
+[1m--- a/backend/services/pdfGeneratorService.js[m
+[1m+++ b/backend/services/pdfGeneratorService.js[m
+[36m@@ -1,4 +1,5 @@[m
+ import puppeteer from 'puppeteer';[m
+[32m+[m[32mimport axios from 'axios';[m
+ [m
+ class PDFGeneratorService {[m
+   /**[m
+[36m@@ -11,6 +12,17 @@[m [mclass PDFGeneratorService {[m
+     let browser;[m
+ [m
+     try {[m
+[32m+[m[32m      // 1. Fetch header image as base64 if it exists[m
+[32m+[m[32m      let headerImageBase64 = null;[m
+[32m+[m[32m      if (worksheet.headerImageUrl) {[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          headerImageBase64 = await this.getImageAsBase64(worksheet.headerImageUrl);[m
+[32m+[m[32m          console.log('✅ Header image converted to base64 for repeating header');[m
+[32m+[m[32m        } catch (imgError) {[m
+[32m+[m[32m          console.error('⚠️ Failed to fetch header image for PDF:', imgError.message);[m
+[32m+[m[32m        }[m
+[32m+[m[32m      }[m
+[32m+[m
+       // Launch browser[m
+       browser = await puppeteer.launch({[m
+         headless: 'new',[m
+[36m@@ -19,21 +31,30 @@[m [mclass PDFGeneratorService {[m
+ [m
+       const page = await browser.newPage();[m
+ [m
+[31m-      // Generate HTML content[m
+[32m+[m[32m      // Generate HTML content (Header removed from body to use headerTemplate instead)[m
+       const htmlContent = this.generateHTML(worksheet, user);[m
+ [m
+       // Set content[m
+       await page.setContent(htmlContent, { waitUntil: 'networkidle0' });[m
+ [m
+[31m-      // Generate PDF[m
+[32m+[m[32m      // Build header template[m
+[32m+[m[32m      const headerTemplate = headerImageBase64 ? `[m
+[32m+[m[32m        <div style="width: 100%; margin: 0; padding: 0; -webkit-print-color-adjust: exact;">[m
+[32m+[m[32m          <img src="${headerImageBase64}" style="width: 100%; height: auto; display: block;" />[m
+[32m+[m[32m        </div>` : '<div style="height: 0;"></div>';[m
+[32m+[m
+[32m+[m[32m      // Generate PDF with repeating header[m
+       const pdfBuffer = await page.pdf({[m
+         format: 'A4',[m
+[32m+[m[32m        displayHeaderFooter: true,[m
+[32m+[m[32m        headerTemplate: headerTemplate,[m
+[32m+[m[32m        footerTemplate: '<div style="font-size: 8px; width: 100%; text-align: center; color: #666;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>',[m
+         printBackground: true,[m
+         margin: {[m
+[31m-          top: '20mm',[m
+[31m-          right: '15mm',[m
+[32m+[m[32m          top: headerImageBase64 ? '40mm' : '20mm', // Accommodate repeating header[m
+[32m+[m[32m          right: '0mm', // Set to 0 for full-width header support[m
+           bottom: '20mm',[m
+[31m-          left: '15mm'[m
+[32m+[m[32m          left: '0mm'   // Set to 0 for full-width header support[m
+         }[m
+       });[m
+ [m
+[36m@@ -87,20 +108,8 @@[m [mclass PDFGeneratorService {[m
+       line-height: 1.5;[m
+       color: #000;[m
+       font-size: 11pt;[m
+[31m-    }[m
+[31m-[m
+[31m-    /* Header Image Styling */[m
+[31m-    .header-image-container {[m
+[31m-    width: 100%;[m
+[31m-      text-align: center;[m
+[31m-      margin:0px;[m
+[31m-      [m
+[31m-    }[m
+[31m-    .header-image-container img {[m
+[31m-      max-width: 100%;[m
+[31m-      height: auto;[m
+[31m-   [m
+[31m-  display: block;[m
+[32m+[m[32m      padding-left: 15mm;  /* Move PDF margins to content padding */[m
+[32m+[m[32m      padding-right: 15mm; /* Move PDF margins to content padding */[m
+     }[m
+ [m
+     /* Worksheet Heading */[m
+[36m@@ -202,12 +211,6 @@[m [mclass PDFGeneratorService {[m
+ </head>[m
+ <body>[m
+ [m
+[31m-  <!-- Header Image -->[m
+[31m-  ${worksheet.headerImageUrl ? `[m
+[31m-  <div class="header-image-container">[m
+[31m-    <img src="${worksheet.headerImageUrl}" alt="University Header" />[m
+[31m-  </div>` : ''}[m
+[31m-[m
+   <!-- Worksheet Heading -->[m
+   <div class="worksheet-heading">[m
+     Worksheet No - ${this.cleanValue(worksheet.experimentNumber) || ''}[m
+[36m@@ -425,6 +428,23 @@[m [mclass PDFGeneratorService {[m
+     };[m
+     return text.toString().replace(/[&<>"']/g, m => map[m]);[m
+   }[m
+[32m+[m
+[32m+[m[32m  /**[m
+[32m+[m[32m   * Helper to fetch an image and convert it to base64 Data URI[m
+[32m+[m[32m   * @param {String} url - Image URL[m
+[32m+[m[32m   * @returns {Promise<String>} - Base64 Data URI[m
+[32m+[m[32m   */[m
+[32m+[m[32m  async getImageAsBase64(url) {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      const response = await axios.get(url, { responseType: 'arraybuffer' });[m
+[32m+[m[32m      const base64 = Buffer.from(response.data, 'binary').toString('base64');[m
+[32m+[m[32m      const contentType = response.headers['content-type'];[m
+[32m+[m[32m      return `data:${contentType};base64,${base64}`;[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m      console.error(`Error fetching image from ${url}:`, error.message);[m
+[32m+[m[32m      throw error;[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+ }[m
+ [m
+ export default new PDFGeneratorService();[m
