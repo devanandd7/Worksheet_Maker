@@ -125,10 +125,12 @@ async function generateWorksheetLogic(params) {
     });
 
     // Process multi-part questions
-    let formattedQuestionTitle = '';
-    if (generatedContent.mainQuestionTitle && generatedContent.questionParts) {
+    let rawQuestionTitle = generatedContent.questionTitle || generatedContent.mainQuestionTitle || '';
+    let formattedQuestionTitle = rawQuestionTitle;
+
+    if (rawQuestionTitle && generatedContent.questionParts && generatedContent.questionParts.length > 0) {
         formattedQuestionTitle = `<div style="margin-bottom: 24px;">
-          <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">${generatedContent.mainQuestionTitle}</h3>
+          <p style="margin-bottom: 16px;"><b>Experiment: ${rawQuestionTitle.replace(/^Experiment:\s*/i, '')}</b></p>
           <div style="margin-left: 20px;">
             ${generatedContent.questionParts.map(p => `
               <p style="margin-bottom: 12px;">
@@ -173,7 +175,7 @@ async function generateWorksheetLogic(params) {
         difficulty: difficulty || 'medium',
         headerImageUrl: finalHeaderImageUrl,
         content: {
-            mainQuestionTitle: generatedContent.mainQuestionTitle || '',
+            mainQuestionTitle: rawQuestionTitle,
             questionParts: generatedContent.questionParts || [],
             questionTitle: formattedQuestionTitle,
             aim: generatedContent.aim || '',

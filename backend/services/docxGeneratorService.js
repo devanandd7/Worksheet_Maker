@@ -1,16 +1,9 @@
-import { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, WidthType, AlignmentType, Header, Footer, BorderStyle, LevelFormat } from 'docx';
+import { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, WidthType, AlignmentType, Header, Footer, BorderStyle, LevelFormat, VerticalAlign } from 'docx';
 import axios from 'axios';
 
 class DocxGeneratorService {
-    /**
-     * Generate DOCX from worksheet content
-     * @param {Object} worksheet - Worksheet document
-     * @param {Object} user - User document
-     * @returns {Promise<Buffer>} - DOCX buffer
-     */
     async generateWorksheetDocx(worksheet, user) {
         try {
-            // 1. Fetch header image if it exists
             let headerImageData = null;
             if (worksheet.headerImageUrl) {
                 try {
@@ -21,57 +14,41 @@ class DocxGeneratorService {
                 }
             }
 
-            // 2. Prepare content
             const dateOfPerf = worksheet.dateOfPerformance
                 ? new Date(worksheet.dateOfPerformance).toLocaleDateString('en-IN')
                 : '';
 
-            // Define sections
             const children = [];
 
-            // ========================================
             // WORKSHEET HEADING
-            // ========================================
             children.push(new Paragraph({
                 alignment: AlignmentType.CENTER,
                 spacing: { before: 100, after: 200 },
                 children: [
                     new TextRun({
-                        text: `Worksheet No - ${worksheet.experimentNumber || 'N/A'}`,
+                        text: `Worksheet No - ${worksheet.experimentNumber || ''}`,
                         bold: true,
                         size: 32,
                     }),
                 ],
             }));
 
-            // ========================================
             // STUDENT DETAILS TABLE
-            // ========================================
             const noBorder = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
 
             children.push(new Table({
-                width: { size: 9360, type: WidthType.DXA },
-                columnWidths: [4680, 4680],
+                width: { size: 100, type: WidthType.PERCENTAGE },
                 borders: {
-                    top: noBorder,
-                    bottom: noBorder,
-                    left: noBorder,
-                    right: noBorder,
-                    insideHorizontal: noBorder,
-                    insideVertical: noBorder,
+                    top: noBorder, bottom: noBorder, left: noBorder, right: noBorder,
+                    insideHorizontal: noBorder, insideVertical: noBorder,
                 },
                 rows: [
                     new TableRow({
                         children: [
                             new TableCell({
-                                width: { size: 4680, type: WidthType.DXA },
+                                width: { size: 50, type: WidthType.PERCENTAGE },
                                 margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                borders: {
-                                    top: noBorder,
-                                    bottom: noBorder,
-                                    left: noBorder,
-                                    right: noBorder,
-                                },
+                                borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
                                 children: [
                                     this.createDetailPara('STUDENT NAME:', user.name),
                                     this.createDetailPara('BRANCH:', user.branch || user.course),
@@ -80,14 +57,9 @@ class DocxGeneratorService {
                                 ],
                             }),
                             new TableCell({
-                                width: { size: 4680, type: WidthType.DXA },
+                                width: { size: 50, type: WidthType.PERCENTAGE },
                                 margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                                borders: {
-                                    top: noBorder,
-                                    bottom: noBorder,
-                                    left: noBorder,
-                                    right: noBorder,
-                                },
+                                borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
                                 children: [
                                     this.createDetailPara('UID:', user.uid),
                                     this.createDetailPara('SECTION/GROUP:', user.section),
@@ -100,122 +72,156 @@ class DocxGeneratorService {
                 ],
             }));
 
-            // Spacing after table
             children.push(new Paragraph({ spacing: { after: 200 } }));
 
-            // ========================================
-            // TOPIC (if no question title)
-            // ========================================
-            if (!worksheet.content.questionTitle) {
+            // MAIN QUESTION TITLE
+            let mainQContent = worksheet.content.questionTitle || worksheet.content.mainQuestionTitle || worksheet.topic || '';
+            const mainQText = mainQContent.replace(/<[^>]*>/g, '').replace(/^Experiment:\s*/i, '').trim();
+
+            if (mainQText) {
                 children.push(new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 200 },
-                    children: [
-                        new TextRun({
-                            text: worksheet.topic || '',
-                            bold: true,
-                            size: 28,
-                        }),
-                    ],
+                    children: [new TextRun({ text: 'MAIN QUESTION', bold: true, size: 24 })],
+                    spacing: { before: 200, after: 150 },
+                }));
+
+                children.push(new Paragraph({
+                    children: [new TextRun({ text: mainQText, bold: true, size: 22 })],
+                    spacing: { before: 50, after: 150 },
                 }));
             }
 
-            // ========================================
-            // MAIN SECTIONS
-            // ========================================
-            await this.addSection(children, 'MAIN QUESTION', worksheet.content.questionTitle, worksheet.images, 'mainQuestion');
+            // MULTI-PART QUESTION BREAKDOWN
+            if (worksheet.content.questionParts && worksheet.content.questionParts.length > 0) {
+                children.push(new Paragraph({
+                    children: [new TextRun({ text: 'Question Parts:', bold: true, size: 20, underline: {} })],
+                    spacing: { before: 100, after: 100 },
+                }));
+
+                worksheet.content.questionParts.forEach(part => {
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({ text: `${part.part}. `, bold: true, size: 20 }),
+                            new TextRun({ text: part.title || part.description, bold: true, size: 20 })
+                        ],
+                        spacing: { before: 80, after: 50 },
+                        indent: { left: 360 }
+                    }));
+
+                    if (part.title && part.description && part.title !== part.description) {
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: part.description, size: 20 })],
+                            spacing: { after: 80 },
+                            indent: { left: 720 }
+                        }));
+                    }
+                });
+
+                children.push(new Paragraph({ spacing: { after: 200 } }));
+            }
+
             await this.addSection(children, 'AIM', worksheet.content.aim, worksheet.images, 'aim');
             await this.addSection(children, 'PROBLEM STATEMENT', worksheet.content.problemStatement, worksheet.images, 'problemStatement');
             await this.addSection(children, 'DATASET DESCRIPTION', worksheet.content.dataset, worksheet.images, 'dataset');
 
-            // ========================================
-            // OBJECTIVE (with HTML parsing)
-            // ========================================
+            if (worksheet.content.algorithm) {
+                await this.addSection(children, 'ALGORITHM', worksheet.content.algorithm, worksheet.images, 'algorithm');
+            }
+
+            // OBJECTIVE (bullet points)
             if (worksheet.content.objective && worksheet.content.objective.length > 0) {
                 children.push(new Paragraph({
                     children: [new TextRun({ text: 'OBJECTIVE', bold: true, size: 24 })],
-                    spacing: { before: 200, after: 150 },
+                    spacing: { before: 300, after: 150 },
+                    border: { bottom: { color: "333333", space: 1, style: BorderStyle.SINGLE, size: 6 } }
                 }));
 
                 worksheet.content.objective.forEach(obj => {
                     const textRuns = this.parseInlineHTML(obj);
                     children.push(new Paragraph({
                         numbering: { reference: 'my-bullets', level: 0 },
-                        spacing: { before: 50, after: 50 },
-                        indent: { left: 360, right: 0 },
+                        spacing: { before: 80, after: 80 },
+                        indent: { left: 720, hanging: 360 },
                         children: textRuns.length > 0 ? textRuns : [new TextRun({ text: obj, size: 20 })],
                     }));
                 });
+
+                children.push(new Paragraph({ spacing: { after: 200 } }));
             }
 
-            // ========================================
-            // CODE / IMPLEMENTATION
-            // ========================================
+            // CODE SECTION (if present)
             if (worksheet.content.code) {
                 const code = worksheet.content.code;
                 const source = typeof code === 'string' ? code : (code.source || '');
-                const lang = code.language ? ` (${code.language})` : '';
+                const lang = code.language ? ` (${code.language.toUpperCase()})` : '';
 
                 children.push(new Paragraph({
                     children: [new TextRun({ text: `CODE / IMPLEMENTATION${lang}`, bold: true, size: 24 })],
-                    spacing: { before: 200, after: 150 },
+                    spacing: { before: 300, after: 150 },
+                    border: { bottom: { color: "333333", space: 1, style: BorderStyle.SINGLE, size: 6 } }
                 }));
 
                 if (source) {
-                    // Split code by newlines to preserve formatting
                     const codeLines = source.split(/\r?\n/);
-                    const codeRuns = codeLines.map((line, index) => {
-                        return new TextRun({
+                    const codeRuns = [];
+                    codeLines.forEach((line, index) => {
+                        codeRuns.push(new TextRun({
                             text: line,
                             font: 'Courier New',
                             size: 18,
-                            break: index < codeLines.length - 1 ? 1 : 0
-                        });
+                            break: index > 0 ? 1 : 0
+                        }));
                     });
 
                     children.push(new Paragraph({
                         children: codeRuns,
-                        shading: { type: 'solid', fill: 'F5F5F5' }, // Light gray background
+                        shading: { type: 'solid', fill: 'F5F5F5' },
                         spacing: { before: 100, after: 100 },
-                        alignment: AlignmentType.LEFT,
+                        indent: { left: 360, right: 360 }
                     }));
                 }
 
                 await this.addImages(children, worksheet.images, 'code');
 
                 if (typeof code === 'object' && code.explanation) {
-                    await this.addHtmlContent(children, code.explanation, { before: 150, after: 100 });
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: 'Code Explanation:', bold: true, size: 20 })],
+                        spacing: { before: 150, after: 100 },
+                    }));
+                    await this.addHtmlContent(children, code.explanation, { before: 50, after: 100 });
                 }
+
+                children.push(new Paragraph({ spacing: { after: 200 } }));
             }
 
-            // ========================================
-            // OUTPUT
-            // ========================================
             await this.addSection(children, 'OUTPUT', worksheet.content.output, worksheet.images, 'output');
 
-            // ========================================
-            // LEARNING OUTCOMES (with HTML parsing)
-            // ========================================
+            if (worksheet.content.observation) {
+                await this.addSection(children, 'OBSERVATION', worksheet.content.observation, worksheet.images, 'observation');
+            }
+
+            if (worksheet.content.additionalNotes) {
+                await this.addSection(children, 'ADDITIONAL NOTES', worksheet.content.additionalNotes, worksheet.images, null);
+            }
+
+            // LEARNING OUTCOMES (bullet points)
             if (worksheet.content.learningOutcome && worksheet.content.learningOutcome.length > 0) {
                 children.push(new Paragraph({
                     children: [new TextRun({ text: 'LEARNING OUTCOME', bold: true, size: 24 })],
-                    spacing: { before: 200, after: 150 },
+                    spacing: { before: 300, after: 150 },
+                    border: { bottom: { color: "333333", space: 1, style: BorderStyle.SINGLE, size: 6 } }
                 }));
 
                 worksheet.content.learningOutcome.forEach(outcome => {
                     const textRuns = this.parseInlineHTML(outcome);
                     children.push(new Paragraph({
                         numbering: { reference: 'my-bullets', level: 0 },
-                        spacing: { before: 50, after: 50 },
-                        indent: { left: 360, right: 0 },
+                        spacing: { before: 80, after: 80 },
+                        indent: { left: 720, hanging: 360 },
                         children: textRuns.length > 0 ? textRuns : [new TextRun({ text: outcome, size: 20 })],
                     }));
                 });
             }
 
-            // ========================================
-            // DOCUMENT GENERATION
-            // ========================================
             const doc = new Document({
                 numbering: {
                     config: [
@@ -226,11 +232,7 @@ class DocxGeneratorService {
                                 format: LevelFormat.BULLET,
                                 text: '•',
                                 alignment: AlignmentType.LEFT,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 720, hanging: 360 }
-                                    }
-                                }
+                                style: { paragraph: { indent: { left: 720, hanging: 360 } } }
                             }]
                         },
                         {
@@ -240,11 +242,7 @@ class DocxGeneratorService {
                                 format: LevelFormat.DECIMAL,
                                 text: '%1.',
                                 alignment: AlignmentType.LEFT,
-                                style: {
-                                    paragraph: {
-                                        indent: { left: 720, hanging: 360 }
-                                    }
-                                }
+                                style: { paragraph: { indent: { left: 720, hanging: 360 } } }
                             }]
                         }
                     ]
@@ -252,12 +250,7 @@ class DocxGeneratorService {
                 sections: [{
                     properties: {
                         page: {
-                            margin: {
-                                top: headerImageData ? 1134 : 1134,
-                                right: 1440,
-                                bottom: 1134,
-                                left: 1440,
-                            }
+                            margin: { top: headerImageData ? 1134 : 1134, right: 1440, bottom: 1134, left: 1440 }
                         }
                     },
                     headers: {
@@ -265,33 +258,15 @@ class DocxGeneratorService {
                             children: headerImageData ? [
                                 new Paragraph({
                                     spacing: { after: 0 },
-                                    children: [
-                                        new ImageRun({
-                                            data: headerImageData,
-                                            transformation: {
-                                                width: 595,
-                                                height: 80,
-                                            },
-                                        }),
-                                    ],
+                                    alignment: AlignmentType.CENTER,
+                                    children: [new ImageRun({ data: headerImageData, transformation: { width: 595, height: 80 } })],
                                 }),
                             ] : [],
                         }),
                     },
                     footers: {
                         default: new Footer({
-                            children: [
-                                new Paragraph({
-                                    alignment: AlignmentType.CENTER,
-                                    children: [
-                                        new TextRun({
-                                            text: '',
-                                            size: 16,
-                                            color: '666666',
-                                        }),
-                                    ],
-                                }),
-                            ],
+                            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: '', size: 16, color: '666666' })], })],
                         }),
                     },
                     children: children,
@@ -305,9 +280,6 @@ class DocxGeneratorService {
         }
     }
 
-    /**
-     * Create a detail paragraph for student info table
-     */
     createDetailPara(label, value) {
         return new Paragraph({
             spacing: { before: 80, after: 80 },
@@ -318,61 +290,44 @@ class DocxGeneratorService {
         });
     }
 
-    /**
-     * Add a section with heading, content, and images
-     */
     async addSection(children, heading, content, images, sectionKey) {
         if (!content && !this.hasImages(images, sectionKey)) return;
 
         children.push(new Paragraph({
             children: [new TextRun({ text: heading, bold: true, size: 24 })],
-            spacing: { before: 200, after: 150 },
+            spacing: { before: 300, after: 150 },
+            border: { bottom: { color: "333333", space: 1, style: BorderStyle.SINGLE, size: 6 } }
         }));
 
         if (content) {
             await this.addHtmlContent(children, content, { before: 50, after: 100 });
         }
 
-        await this.addImages(children, images, sectionKey);
+        if (sectionKey) {
+            await this.addImages(children, images, sectionKey);
+        }
+
+        children.push(new Paragraph({ spacing: { after: 200 } }));
     }
 
-    /**
-     * Parse HTML content and add formatted paragraphs to children
-     * Supports: <p>, <b>, <strong>, <i>, <em>, <u>, <code>, <ul>, <ol>, <li>
-     */
     async addHtmlContent(children, htmlContent, spacing = {}) {
         if (!htmlContent) return;
 
-        // Clean up outer wrappers
-        let cleaned = htmlContent
-            .replace(/^<div[^>]*>/i, '')
-            .replace(/<\/div>$/i, '')
-            .trim();
-
-        // Split by tables to handle them separately
-        // Capturing parentheses include the separator in the result
+        let cleaned = htmlContent.replace(/^<div[^>]*>/i, '').replace(/<\/div>$/i, '').trim();
         const parts = cleaned.split(/(<table[^>]*>[\s\S]*?<\/table>)/gi);
 
         for (const part of parts) {
             if (part.match(/^<table/i)) {
-                // It's a table
                 this.addTable(children, part);
             } else {
-                // It's regular content (paragraphs, lists, etc)
                 this.processRegularContent(children, part, spacing);
             }
         }
     }
 
-    /**
-     * Process regular non-table content (lists, paragraphs)
-     */
     processRegularContent(children, content, spacing) {
         let cleaned = content;
 
-        // ========================================
-        // HANDLE UNORDERED LISTS (bullets)
-        // ========================================
         const ulMatches = cleaned.match(/<ul[^>]*>[\s\S]*?<\/ul>/gi);
         if (ulMatches) {
             ulMatches.forEach(ulBlock => {
@@ -381,12 +336,11 @@ class DocxGeneratorService {
                     items.forEach(item => {
                         const itemContent = item.replace(/<\/?li[^>]*>/gi, '').trim();
                         const textRuns = this.parseInlineHTML(itemContent);
-
                         if (textRuns.length > 0) {
                             children.push(new Paragraph({
                                 numbering: { reference: 'my-bullets', level: 0 },
-                                spacing: { before: 50, after: 50 },
-                                indent: { left: 360, right: 0 },
+                                spacing: { before: 80, after: 80 },
+                                indent: { left: 720, hanging: 360 },
                                 children: textRuns,
                             }));
                         }
@@ -396,9 +350,6 @@ class DocxGeneratorService {
             cleaned = cleaned.replace(/<ul[^>]*>[\s\S]*?<\/ul>/gi, '');
         }
 
-        // ========================================
-        // HANDLE ORDERED LISTS (numbers)
-        // ========================================
         const olMatches = cleaned.match(/<ol[^>]*>[\s\S]*?<\/ol>/gi);
         if (olMatches) {
             olMatches.forEach(olBlock => {
@@ -407,12 +358,11 @@ class DocxGeneratorService {
                     items.forEach(item => {
                         const itemContent = item.replace(/<\/?li[^>]*>/gi, '').trim();
                         const textRuns = this.parseInlineHTML(itemContent);
-
                         if (textRuns.length > 0) {
                             children.push(new Paragraph({
                                 numbering: { reference: 'my-numbers', level: 0 },
-                                spacing: { before: 50, after: 50 },
-                                indent: { left: 360, right: 0 },
+                                spacing: { before: 80, after: 80 },
+                                indent: { left: 720, hanging: 360 },
                                 children: textRuns,
                             }));
                         }
@@ -422,14 +372,10 @@ class DocxGeneratorService {
             cleaned = cleaned.replace(/<ol[^>]*>[\s\S]*?<\/ol>/gi, '');
         }
 
-        // ========================================
-        // HANDLE REGULAR PARAGRAPHS & LINE BREAKS
-        // ========================================
-        // Split by <p>, <br>, and newlines, then filter empty strings
         const paragraphs = cleaned
             .split(/<\/?p[^>]*>|<br\s*\/?>|\n/gi)
             .map(p => p.trim())
-            .filter(p => p && !p.match(/^<\/?[a-z]/i)); // Remove leftover tags if any
+            .filter(p => p && !p.match(/^<\/?[a-z]/i));
 
         paragraphs.forEach(para => {
             const trimmed = para.trim();
@@ -439,133 +385,94 @@ class DocxGeneratorService {
             if (textRuns.length > 0) {
                 children.push(new Paragraph({
                     alignment: AlignmentType.JUSTIFY,
-                    spacing: spacing,
+                    spacing: { before: 100, after: 100, line: 360 },
+                    indent: { left: 360 },
                     children: textRuns,
                 }));
             }
         });
     }
 
-    /**
-     * Parse and add HTML Table to children
-     */
     addTable(children, tableHtml) {
         const rows = [];
-
-        // Find all rows (tr)
         const trMatches = tableHtml.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi);
         if (!trMatches) return;
 
-        trMatches.forEach(tr => {
+        trMatches.forEach((tr, rowIndex) => {
             const cells = [];
-
-            // Find all cells (td or th)
             const tdMatches = tr.match(/<(td|th)[^>]*>[\s\S]*?<\/\1>/gi);
             if (!tdMatches) return;
 
+            let isHeaderRow = false;
+
             tdMatches.forEach(td => {
-                // Extract content
                 const content = td.replace(/<(td|th)[^>]*>([\s\S]*?)<\/\1>/i, '$2').trim();
                 const isHeader = td.match(/^<th/i);
+                if (isHeader) isHeaderRow = true;
 
                 const textRuns = this.parseInlineHTML(content);
 
-                // Add cell to row
                 cells.push(new TableCell({
-                    children: [
-                        new Paragraph({
-                            children: textRuns.length > 0 ? textRuns : [new TextRun({ text: content })],
-                            alignment: isHeader ? AlignmentType.CENTER : AlignmentType.LEFT,
-                        })
-                    ],
-                    verticalAlign: AlignmentType.CENTER,
-                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
-                    shading: isHeader ? { fill: "E0E0E0", type: "solid" } : undefined, // Gray background for headers
-                    width: {
-                        size: 100 / tdMatches.length, // Distribute width evenly
-                        type: WidthType.PERCENTAGE,
-                    },
+                    children: [new Paragraph({ children: textRuns.length > 0 ? textRuns : [new TextRun({ text: content, size: 20 })], alignment: isHeader ? AlignmentType.CENTER : AlignmentType.LEFT })],
+                    verticalAlign: VerticalAlign.CENTER,
+                    margins: { top: 150, bottom: 150, left: 150, right: 150 },
+                    shading: isHeader ? { fill: "E0E0E0", type: "solid" } : (rowIndex % 2 === 1 ? { fill: "F8F8F8", type: "solid" } : undefined),
+                    width: { size: 100 / tdMatches.length, type: WidthType.PERCENTAGE },
                 }));
             });
 
             if (cells.length > 0) {
-                rows.push(new TableRow({
-                    children: cells,
-                }));
+                rows.push(new TableRow({ children: cells, tableHeader: isHeaderRow }));
             }
         });
 
         if (rows.length > 0) {
             children.push(new Table({
                 rows: rows,
-                width: {
-                    size: 100,
-                    type: WidthType.PERCENTAGE,
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: {
+                    top: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                    bottom: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                    left: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                    right: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                    insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
+                    insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "CCCCCC" },
                 },
-                margins: { top: 100, bottom: 100 },
+                margins: { top: 200, bottom: 200 },
             }));
-
-            // Add spacing after table
             children.push(new Paragraph({ spacing: { after: 200 } }));
         }
     }
 
-    /**
-     * Parse inline HTML tags and return TextRun array
-     * Supports: <b>, <strong>, <i>, <em>, <u>, <code>, and nested combinations
-     */
     parseInlineHTML(html) {
         if (!html || typeof html !== 'string') return [];
 
-        // Step 1: Normalize and clean
         let cleaned = html.replace(/\>\>/g, '').trim();
-
-        // Step 2: Convert HTML tags to internal markers
         cleaned = cleaned.replace(/<b>(.*?)<\/b>/gi, '§BOLD§$1§/BOLD§');
         cleaned = cleaned.replace(/<strong>(.*?)<\/strong>/gi, '§BOLD§$1§/BOLD§');
         cleaned = cleaned.replace(/<i>(.*?)<\/i>/gi, '§ITALIC§$1§/ITALIC§');
         cleaned = cleaned.replace(/<em>(.*?)<\/em>/gi, '§ITALIC§$1§/ITALIC§');
         cleaned = cleaned.replace(/<u>(.*?)<\/u>/gi, '§UNDERLINE§$1§/UNDERLINE§');
         cleaned = cleaned.replace(/<code>(.*?)<\/code>/gi, '§CODE§$1§/CODE§');
-
-        // Step 3: Remove ALL remaining HTML tags
         cleaned = cleaned.replace(/<[^>]+>/g, '');
-
-        // Step 4: Decode HTML entities
         cleaned = this.decodeHtmlEntities(cleaned);
 
-        // Step 5: Parse markers and create text runs
         const segments = cleaned.split(/(§BOLD§|§\/BOLD§|§ITALIC§|§\/ITALIC§|§UNDERLINE§|§\/UNDERLINE§|§CODE§|§\/CODE§)/);
         const textRuns = [];
 
-        let currentBold = false;
-        let currentItalic = false;
-        let currentUnderline = false;
-        let currentCode = false;
+        let currentBold = false, currentItalic = false, currentUnderline = false, currentCode = false;
 
         for (const segment of segments) {
-            if (segment === '§BOLD§') {
-                currentBold = true;
-            } else if (segment === '§/BOLD§') {
-                currentBold = false;
-            } else if (segment === '§ITALIC§') {
-                currentItalic = true;
-            } else if (segment === '§/ITALIC§') {
-                currentItalic = false;
-            } else if (segment === '§UNDERLINE§') {
-                currentUnderline = true;
-            } else if (segment === '§/UNDERLINE§') {
-                currentUnderline = false;
-            } else if (segment === '§CODE§') {
-                currentCode = true;
-            } else if (segment === '§/CODE§') {
-                currentCode = false;
-            } else if (segment && segment.trim()) {
-                const runOptions = {
-                    text: segment,
-                    size: 20,
-                };
-
+            if (segment === '§BOLD§') currentBold = true;
+            else if (segment === '§/BOLD§') currentBold = false;
+            else if (segment === '§ITALIC§') currentItalic = true;
+            else if (segment === '§/ITALIC§') currentItalic = false;
+            else if (segment === '§UNDERLINE§') currentUnderline = true;
+            else if (segment === '§/UNDERLINE§') currentUnderline = false;
+            else if (segment === '§CODE§') currentCode = true;
+            else if (segment === '§/CODE§') currentCode = false;
+            else if (segment && segment.trim()) {
+                const runOptions = { text: segment, size: 20 };
                 if (currentBold) runOptions.bold = true;
                 if (currentItalic) runOptions.italics = true;
                 if (currentUnderline) runOptions.underline = {};
@@ -573,54 +480,32 @@ class DocxGeneratorService {
                     runOptions.font = 'Courier New';
                     runOptions.shading = { type: 'solid', fill: 'F5F5F5' };
                 }
-
                 textRuns.push(new TextRun(runOptions));
             }
         }
 
-        // Fallback: if no runs created, return plain text
         if (textRuns.length === 0 && html.trim()) {
             const plainText = html.replace(/<[^>]*>/g, '').replace(/\>\>/g, '').trim();
-            if (plainText) {
-                textRuns.push(new TextRun({ text: plainText, size: 20 }));
-            }
+            if (plainText) textRuns.push(new TextRun({ text: plainText, size: 20 }));
         }
 
         return textRuns;
     }
 
-    /**
-     * Decode common HTML entities
-     */
     decodeHtmlEntities(text) {
         const entities = {
-            '&amp;': '&',
-            '&lt;': '<',
-            '&gt;': '>',
-            '&quot;': '"',
-            '&#39;': "'",
-            '&apos;': "'",
-            '&nbsp;': ' ',
-            '&mdash;': '—',
-            '&ndash;': '–',
-            '&hellip;': '...',
-            '&rsquo;': '\u2019',  // Right single quote
-            '&lsquo;': '\u2018',  // Left single quote
-            '&rdquo;': '\u201D',  // Right double quote
-            '&ldquo;': '\u201C',  // Left double quote
+            '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'",
+            '&nbsp;': ' ', '&mdash;': '—', '&ndash;': '–', '&hellip;': '...',
+            '&rsquo;': '\u2019', '&lsquo;': '\u2018', '&rdquo;': '\u201D', '&ldquo;': '\u201C',
         };
 
         let decoded = text;
         for (const [entity, char] of Object.entries(entities)) {
             decoded = decoded.replace(new RegExp(entity, 'g'), char);
         }
-
         return decoded;
     }
 
-    /**
-     * Check if images exist for a section
-     */
     hasImages(images, sectionKey) {
         if (!images || !sectionKey) return false;
         const normalizedSection = sectionKey.toLowerCase();
@@ -630,9 +515,6 @@ class DocxGeneratorService {
         );
     }
 
-    /**
-     * Add images for a section
-     */
     async addImages(children, images, sectionKey) {
         if (!images || !sectionKey) return;
 
@@ -646,33 +528,16 @@ class DocxGeneratorService {
             try {
                 const response = await axios.get(img.url, { responseType: 'arraybuffer' });
 
-                // Add image
                 children.push(new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    spacing: { before: 150, after: 100 },
-                    children: [
-                        new ImageRun({
-                            data: response.data,
-                            transformation: {
-                                width: 400,
-                                height: 300,
-                            },
-                        }),
-                    ],
+                    spacing: { before: 200, after: 100 },
+                    children: [new ImageRun({ data: response.data, transformation: { width: 450, height: 338 } })],
                 }));
 
-                // Add caption
                 children.push(new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    spacing: { after: 150 },
-                    children: [
-                        new TextRun({
-                            text: img.caption || 'Figure',
-                            italics: true,
-                            size: 18,
-                            color: '666666'
-                        }),
-                    ],
+                    spacing: { after: 200 },
+                    children: [new TextRun({ text: img.caption || 'Figure', italics: true, size: 18, color: '666666' })],
                 }));
             } catch (err) {
                 console.error(`⚠️ Failed to add image to DOCX: ${err.message}`);
