@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import axios from 'axios';
 
 class PDFGeneratorService {
   /**
@@ -11,6 +12,17 @@ class PDFGeneratorService {
     let browser;
 
     try {
+      // 1. Fetch header image as base64 if it exists
+      let headerImageBase64 = null;
+      if (worksheet.headerImageUrl) {
+        try {
+          headerImageBase64 = await this.getImageAsBase64(worksheet.headerImageUrl);
+          console.log('✅ Header image converted to base64 for repeating header');
+        } catch (imgError) {
+          console.error('⚠️ Failed to fetch header image for PDF:', imgError.message);
+        }
+      }
+
       // Launch browser
       browser = await puppeteer.launch({
         headless: 'new',
@@ -19,21 +31,30 @@ class PDFGeneratorService {
 
       const page = await browser.newPage();
 
-      // Generate HTML content
+      // Generate HTML content (Header removed from body to use headerTemplate instead)
       const htmlContent = this.generateHTML(worksheet, user);
 
       // Set content
       await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
 
-      // Generate PDF
+      // Build header template
+      const headerTemplate = headerImageBase64 ? `
+        <div style="width: 100%; margin: 0; padding: 0; -webkit-print-color-adjust: exact;">
+          <img src="${headerImageBase64}" style="width: 100%; height: auto; display: block;" />
+        </div>` : '<div style="height: 0;"></div>';
+
+      // Generate PDF with repeating header
       const pdfBuffer = await page.pdf({
         format: 'A4',
+        displayHeaderFooter: true,
+        headerTemplate: headerTemplate,
+        footerTemplate: '<div style="font-size: 8px; width: 100%; text-align: center; color: #666;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>',
         printBackground: true,
         margin: {
-          top: '20mm',
-          right: '15mm',
+          top: headerImageBase64 ? '40mm' : '20mm', // Accommodate repeating header
+          right: '0mm', // Set to 0 for full-width header support
           bottom: '20mm',
-          left: '15mm'
+          left: '0mm'   // Set to 0 for full-width header support
         }
       });
 
@@ -87,20 +108,8 @@ class PDFGeneratorService {
       line-height: 1.5;
       color: #000;
       font-size: 11pt;
-    }
-
-    /* Header Image Styling */
-    .header-image-container {
-    width: 100%;
-      text-align: center;
-      margin:0px;
-      
-    }
-    .header-image-container img {
-      max-width: 100%;
-      height: auto;
-   
-  display: block;
+      padding-left: 15mm;  /* Move PDF margins to content padding */
+      padding-right: 15mm; /* Move PDF margins to content padding */
     }
 
     /* Worksheet Heading */
@@ -201,12 +210,6 @@ class PDFGeneratorService {
   </style>
 </head>
 <body>
-
-  <!-- Header Image -->
-  ${worksheet.headerImageUrl ? `
-  <div class="header-image-container">
-    <img src="${worksheet.headerImageUrl}" alt="University Header" />
-  </div>` : ''}
 
   <!-- Worksheet Heading -->
   <div class="worksheet-heading">
@@ -424,6 +427,23 @@ class PDFGeneratorService {
       "'": '&#039;'
     };
     return text.toString().replace(/[&<>"']/g, m => map[m]);
+  }
+
+  /**
+   * Helper to fetch an image and convert it to base64 Data URI
+   * @param {String} url - Image URL
+   * @returns {Promise<String>} - Base64 Data URI
+   */
+  async getImageAsBase64(url) {
+    try {
+      const response = await axios.get(url, { responseType: 'arraybuffer' });
+      const base64 = Buffer.from(response.data, 'binary').toString('base64');
+      const contentType = response.headers['content-type'];
+      return `data:${contentType};base64,${base64}`;
+    } catch (error) {
+      console.error(`Error fetching image from ${url}:`, error.message);
+      throw error;
+    }
   }
 }
 
