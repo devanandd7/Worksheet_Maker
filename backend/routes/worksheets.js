@@ -2,15 +2,14 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import auth from '../middleware/auth.js';
 import upload from '../config/multer.js';
-import { worksheetQueue, pdfQueue } from '../config/queue.js';
+import { worksheetQueue } from '../config/queue.js';
 import Worksheet from '../models/Worksheet.js';
 import Template from '../models/Template.js';
 import User from '../models/User.js';
 import UserAIMemory from '../models/UserAIMemory.js';
 import geminiService from '../services/geminiService.js';
 import cloudinaryService from '../services/cloudinaryService.js';
-import pdfGeneratorService from '../services/pdfGeneratorService.js';
-import docxGeneratorService from '../services/docxGeneratorService.js';
+
 
 const router = express.Router();
 
@@ -213,35 +212,7 @@ async function generateWorksheetLogic(params) {
     return worksheet;
 }
 
-/**
- * PDF generation logic (for queue processing)
- */
-async function generatePDFForWorksheet(worksheetId) {
-    const worksheet = await Worksheet.findById(worksheetId).populate('userId');
-    if (!worksheet) {
-        throw new Error('Worksheet not found');
-    }
 
-    const user = await User.findById(worksheet.userId);
-    if (!user) {
-        throw new Error('User not found');
-    }
-
-    console.log(`📄 Generating PDF for worksheet ${worksheetId}...`);
-
-    // Generate PDF
-    const pdfBuffer = await pdfGeneratorService.generateWorksheetPDF(worksheet, user);
-
-    // Upload to Cloudinary
-    const pdfUrl = await cloudinaryService.uploadPDF(pdfBuffer, worksheet.userId.toString(), worksheet.topic);
-
-    // Update worksheet with PDF URL
-    worksheet.pdfUrl = pdfUrl;
-    worksheet.status = 'completed';
-    await worksheet.save();
-
-    return pdfUrl;
-}
 
 // ========== END HELPER FUNCTIONS ==========
 
@@ -483,59 +454,7 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-/**
- * @route   POST /api/worksheets/:id/generate-pdf
- * @desc    Generate PDF from worksheet content
- * @access  Private
- */
-router.post('/:id/generate-pdf', auth, async (req, res) => {
-    try {
-        console.log('Received PDF generation request for ID:', req.params.id);
-        const worksheet = await Worksheet.findOne({
-            _id: req.params.id,
-            userId: req.userId
-        }).populate('templateId');
 
-        if (!worksheet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Worksheet not found'
-            });
-        }
-
-        const user = await User.findById(req.userId);
-
-        console.log('Generating PDF...');
-
-        // Generate PDF
-        const pdfBuffer = await pdfGeneratorService.generateWorksheetPDF(worksheet, user);
-
-        // Upload to Cloudinary
-        const uploadResult = await cloudinaryService.uploadGeneratedPDF(
-            pdfBuffer,
-            req.userId.toString(),
-            req.params.id
-        );
-
-        // Update worksheet with PDF URL
-        worksheet.pdfUrl = uploadResult.url;
-        worksheet.status = 'finalized';
-        await worksheet.save();
-
-        res.json({
-            success: true,
-            message: 'PDF generated successfully',
-            pdfUrl: uploadResult.url,
-            pdfBase64: pdfBuffer.toString('base64')
-        });
-    } catch (error) {
-        console.error('Generate PDF error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to generate PDF'
-        });
-    }
-});
 
 /**
  * @route   GET /api/worksheets/history
@@ -684,47 +603,6 @@ router.post('/:id/regenerate-section', auth, [
     }
 });
 
-/**
- * @route   GET /api/worksheets/:id/download-docx
- * @desc    Download worksheet as DOCX
- * @access  Private
- */
-router.get('/:id/download-docx', auth, async (req, res) => {
-    try {
-        const worksheet = await Worksheet.findOne({
-            _id: req.params.id,
-            userId: req.userId
-        }).populate('templateId');
 
-        if (!worksheet) {
-            return res.status(404).json({
-                success: false,
-                message: 'Worksheet not found'
-            });
-        }
-
-        const user = await User.findById(req.userId);
-
-        console.log(`📝 Generating DOCX for worksheet ${req.params.id}...`);
-
-        const docxBuffer = await docxGeneratorService.generateWorksheetDocx(worksheet, user);
-
-        const fileName = `${worksheet.topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_worksheet.docx`;
-
-        res.set({
-            'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'Content-Disposition': `attachment; filename="${fileName}"`,
-            'Content-Length': docxBuffer.length
-        });
-
-        res.send(docxBuffer);
-    } catch (error) {
-        console.error('Download DOCX error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to generate DOCX'
-        });
-    }
-});
 
 export default router;

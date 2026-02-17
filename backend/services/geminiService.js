@@ -133,10 +133,20 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
 
     /**
      * ✅ INTELLIGENT CODE DETECTION
-     * Analyzes topic, instructions, and sections to determine if code is needed
+     * Analyzes topic, instructions, and sections to determine if code/steps are needed
      */
     _isCodeRequired(topic, additionalInstructions, sections = []) {
         const combinedText = `${topic} ${additionalInstructions}`.toLowerCase();
+
+        // 🚫 GUI TOOLS - These need STEPS, not code
+        const guiToolKeywords = [
+            'tableau', 'power bi', 'powerbi', 'excel', 'word', 'powerpoint',
+            'photoshop', 'illustrator', 'figma', 'canva', 'qlik',
+            'sap', 'salesforce', 'looker', 'google analytics', 'ms office',
+            'adobe', 'autocad', 'solidworks', 'sketc h up', 'blender'
+        ];
+
+        const isGUITool = guiToolKeywords.some(tool => combinedText.includes(tool));
 
         // Check if code section is explicitly requested
         const isCodeSectionRequested = sections.some(s =>
@@ -148,9 +158,10 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
         // Keywords indicating CODE IS REQUIRED
         const codeKeywords = [
             'implement', 'code', 'program', 'script', 'function', 'algorithm',
-            'develop', 'build', 'create', 'write', 'simulation', 'arduino',
+            'develop', 'build', 'simulation', 'arduino',
             'lcd', 'sensor', 'iot', 'api', 'library', 'python', 'java',
-            'javascript', 'c++', 'html', 'css', 'sql', 'programming'
+            'javascript', 'c++', 'html', 'css', 'sql', 'programming',
+            'write a program', 'create a script'
         ];
 
         // Keywords indicating THEORY ONLY (no code)
@@ -158,6 +169,12 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
             'explain', 'describe', 'discuss', 'difference', 'theory',
             'concept', 'what is', 'compare', 'define', 'analyze'
         ];
+
+        // 🔧 GUI tools need STEPS, not code
+        if (isGUITool && !isCodeSectionRequested) {
+            console.log(`🖱️ GUI TOOL DETECTED: ${guiToolKeywords.find(t => combinedText.includes(t))?.toUpperCase()} - Will generate STEPS instead of code`);
+            return false;
+        }
 
         // FORCE code if section is requested
         let codeRequired = isCodeSectionRequested ||
@@ -174,10 +191,11 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
 
         console.log(`🤖 CODE REQUIREMENT ANALYSIS:
     - Topic: "${topic}"
+    - GUI Tool Detected: ${isGUITool ? '🖱️ YES' : 'NO'}
     - Code Section Requested: ${isCodeSectionRequested}
     - Keywords Match: ${codeKeywords.some(keyword => combinedText.includes(keyword))}
     - Explicitly Theoretical: ${isExplicitlyTheoretical}
-    - FINAL DECISION: ${codeRequired ? '✅ CODE REQUIRED' : '❌ NO CODE NEEDED'}
+    - FINAL DECISION: ${codeRequired ? '✅ CODE REQUIRED' : '❌ NO CODE/STEPS ONLY'}
         `);
 
         return codeRequired;
@@ -308,15 +326,15 @@ IMPORTANT: Return ONLY a valid JSON object with this exact structure:
 
             // ✅ STRICT FIELD VALIDATION
             const allowedFields = [
-                'mainQuestionTitle', 'questionParts', 'aim', 'problemStatement',
+                'mainQuestionTitle', 'questionTitle', 'questionParts', 'aim', 'problemStatement',
                 'dataset', 'algorithm', 'objective', 'code', 'output', 'observation',
-                'additionalNotes', 'imageAnalysis', 'imagePlacements', 'imageCaptions',
+                'conclusion', 'additionalNotes', 'imageAnalysis', 'imagePlacements', 'imageCaptions',
                 'learningOutcome'
             ];
 
             const prohibitedFields = [
                 'additionalresources', 'additional_resources', 'resources', 'references',
-                'bibliography', 'furtherreading', 'further_reading', 'conclusion',
+                'bibliography', 'furtherreading', 'further_reading',
                 'summary', 'appendix', 'notes'
             ];
 
@@ -429,17 +447,28 @@ Treat these as HIGHEST PRIORITY constraints.
 ` : ''}
 
 ═══════════════════════════════════════════════════════════════
-🧠 INTELLIGENT CODE GENERATION (CRITICAL!)
+🧠 INTELLIGENT CODE/STEPS GENERATION (CRITICAL!)
 ═══════════════════════════════════════════════════════════════
 
-CODE REQUIREMENT: ${codeRequired ? '✅ CODE IS REQUIRED' : '❌ CODE NOT NEEDED'}
+CODE REQUIREMENT: ${codeRequired ? '✅ CODE IS REQUIRED' : '❌ STEPS/THEORY ONLY'}
 ${codeRequired ? `Preferred Language: ${preferredLanguage.toUpperCase()}` : ''}
 
-IF CODE NOT REQUIRED (Theoretical topics):
-  ❌ DO NOT include "code" field
-  ✓ Focus on theoretical explanation in problemStatement
+🖱️ FOR GUI TOOLS (Tableau, Excel, Power BI, etc.):
+  ❌ DO NOT generate programming code
+  ✅ Generate STEP-BY-STEP INSTRUCTIONS in "code" field:
+  {
+    "code": {
+      "language": "steps",
+      "source": "Not applicable for GUI tools",
+      "explanation": "<div><p><b>Step-by-Step Instructions:</b></p><ol><li><b>Step 1:</b> Open Tableau and connect to Sample Superstore dataset</li><li><b>Step 2:</b> Drag 'Order Date' to Columns and 'Sales' to Rows</li><li><b>Step 3:</b> Create calculated field for Profit Ratio</li></ol></div>"
+    }
+  }
 
-IF CODE IS REQUIRED:
+IF CODE NOT REQUIRED (Theoretical topics):
+  ❌ DO NOT include "code" field at all
+  ✓ Focus on bullet-point explanation in problemStatement
+
+IF CODE IS REQUIRED (Programming topics):
   ✅ Generate code in ${preferredLanguage ? preferredLanguage.toUpperCase() : 'PYTHON'}
   ✅ Include full working implementation with comments
   ✅ Show practical examples
@@ -473,6 +502,20 @@ JSON must end EXACTLY like this:
 }
 
 NOTHING AFTER THE CLOSING BRACE.
+═══════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════
+📏 PROBLEM STATEMENT FORMAT (CRITICAL!)
+═══════════════════════════════════════════════════════════════
+🚨 NEW REQUIREMENT: BULLET POINTS ONLY - NO LONG PARAGRAPHS
+
+DO NOT write long essays. Use concise bullet points (4-5 max):
+
+EXAMPLE FORMAT:
+"problemStatement": "<div style='margin-left: 20px;'><ul><li><b>Challenge:</b> Organizations struggle to visualize sales data effectively</li><li><b>Tool:</b> Tableau provides drag-and-drop interface for interactive dashboards</li><li><b>Task:</b> Analyze Sample Superstore dataset to identify trends and regional disparities</li><li><b>Expected Outcome:</b> Dashboard showing sales trends, regional performance, and profitability</li></ul></div>"
+
+Keep UNDER 5 bullet points, each 15-25 words max.
+Focus on: Challenge/Context, Tool/Method, Specific Task, Expected Result
 ═══════════════════════════════════════════════════════════════
 
 ═══════════════════════════════════════════════════════════════

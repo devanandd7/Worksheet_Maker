@@ -82,9 +82,6 @@ export const worksheetAPI = {
     update: (id, data, token) => api.put(`/worksheets/${id}`, data, {
         headers: { Authorization: `Bearer ${token}` }
     }),
-    generatePDF: (id, token) => api.post(`/worksheets/${id}/generate-pdf`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-    }),
     getHistory: (page = 1, limit = 10, token) => api.get(`/worksheets/history?page=${page}&limit=${limit}`, {
         headers: { Authorization: `Bearer ${token}` }
     }),
@@ -93,10 +90,6 @@ export const worksheetAPI = {
     }),
     regenerateSection: (id, data, token) => api.post(`/worksheets/${id}/regenerate-section`, data, {
         headers: { Authorization: `Bearer ${token}` }
-    }),
-    downloadDocx: (id, token) => api.get(`/worksheets/${id}/download-docx`, {
-        headers: { Authorization: `Bearer ${token}` },
-        responseType: 'blob'
     })
 };
 
@@ -121,9 +114,6 @@ const unifiedAPI = {
     generateWorksheet: worksheetAPI.generate,
     uploadWorksheetImage: worksheetAPI.uploadImage,
     updateWorksheet: worksheetAPI.update,
-    generateWorksheetPDF: worksheetAPI.generatePDF,
-    getWorksheetHistory: worksheetAPI.getHistory,
-    getWorksheetById: worksheetAPI.getById,
     regenerateWorksheetSection: worksheetAPI.regenerateSection,
 
     // Admin
@@ -150,8 +140,7 @@ const unifiedAPI = {
     }),
     retryAnalysis: (id, token) => api.post(`/universities/${id}/analyze`, {}, {
         headers: { Authorization: `Bearer ${token}` }
-    }),
-    downloadWorksheetDocx: worksheetAPI.downloadDocx
+    })
 };
 
 export default unifiedAPI;

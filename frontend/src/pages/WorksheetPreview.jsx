@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useWorksheet } from '../context/WorksheetContext';
 import { toast } from 'react-toastify';
 import {
-    Download as DownloadIcon,
     Edit3,
     Loader,
     FileText,
-    CheckCircle,
-    RefreshCw,
     ArrowLeft,
-    Printer
+    Printer,
+    Save
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -19,21 +17,17 @@ import './WorksheetPreview.css';
 const WorksheetPreview = () => {
     const { id } = useParams();
     const { currentWorksheet, setCurrentWorksheet } = useWorksheet();
-    const { getToken } = useAuth(); // Get auth token
+    const { getToken, user } = useAuth();
     const navigate = useNavigate();
 
     const [worksheet, setWorksheet] = useState(null);
     const [editMode, setEditMode] = useState({});
     const [editedContent, setEditedContent] = useState({});
     const [saving, setSaving] = useState(false);
-    const [generatingPDF, setGeneratingPDF] = useState(false);
     const [loading, setLoading] = useState(true);
-
-    const [autoGenTriggered, setAutoGenTriggered] = useState(false);
 
     useEffect(() => {
         const loadWorksheet = async () => {
-            // Case 1: Worksheet is already in context and matches URL ID
             if (currentWorksheet && currentWorksheet._id === id) {
                 setWorksheet(currentWorksheet);
                 setEditedContent(currentWorksheet.content || {});
@@ -41,7 +35,6 @@ const WorksheetPreview = () => {
                 return;
             }
 
-            // Case 2: Fetch from API (Refresh or direct link)
             try {
                 setLoading(true);
                 const token = await getToken();
@@ -49,7 +42,7 @@ const WorksheetPreview = () => {
                 const fetchedWorksheet = response.data.worksheet;
 
                 setWorksheet(fetchedWorksheet);
-                setCurrentWorksheet(fetchedWorksheet); // Update context
+                setCurrentWorksheet(fetchedWorksheet);
                 setEditedContent(fetchedWorksheet.content || {});
             } catch (error) {
                 console.error('Failed to load worksheet:', error);
@@ -62,8 +55,6 @@ const WorksheetPreview = () => {
 
         loadWorksheet();
     }, [id, currentWorksheet, navigate, setCurrentWorksheet, getToken]);
-
-
 
     const handleEdit = (section) => {
         setEditMode({ ...editMode, [section]: true });
@@ -108,104 +99,6 @@ const WorksheetPreview = () => {
             [section]: value
         });
     };
-
-    const handleGeneratePDF = useCallback(async () => {
-        console.log('Generate PDF clicked. Worksheet:', worksheet);
-        if (!worksheet) {
-            console.error('No worksheet found in state');
-            return;
-        }
-        if (!worksheet._id) {
-            console.error('Worksheet has no ID:', worksheet);
-            toast.error('Error: Invalid worksheet data');
-            return;
-        }
-
-        setGeneratingPDF(true);
-        try {
-            console.log('Sending PDF generate request for ID:', worksheet._id);
-            const token = await getToken();
-            const response = await api.generateWorksheetPDF(worksheet._id, token);
-            console.log('PDF Generated Response:', response.data);
-
-            // Backend returns: { success: true, message: '...', pdfUrl: '...', pdfBase64: '...' }
-            const { pdfUrl, pdfBase64 } = response.data;
-
-            if (pdfUrl) {
-                // Update local state with new PDF URL
-                const updatedWorksheet = { ...worksheet, pdfUrl };
-                setWorksheet(updatedWorksheet);
-                setCurrentWorksheet(updatedWorksheet);
-                toast.success('PDF generated successfully!');
-
-                // Auto-download logic
-                try {
-                    toast.info('Downloading PDF...');
-                    let blob;
-
-                    if (pdfBase64) {
-                        // Use direct base64 data
-                        const byteCharacters = atob(pdfBase64);
-                        const byteNumbers = new Array(byteCharacters.length);
-                        for (let i = 0; i < byteCharacters.length; i++) {
-                            byteNumbers[i] = byteCharacters.charCodeAt(i);
-                        }
-                        const byteArray = new Uint8Array(byteNumbers);
-                        blob = new Blob([byteArray], { type: 'application/pdf' });
-                    } else {
-                        // Fallback to fetch
-                        const pdfResponse = await fetch(pdfUrl);
-                        if (!pdfResponse.ok) throw new Error(`Network response was not ok: ${pdfResponse.status}`);
-                        const contentType = pdfResponse.headers.get('content-type');
-                        if (contentType && !contentType.includes('pdf') && !contentType.includes('application/octet-stream')) {
-                            throw new Error('Server returned invalid file type');
-                        }
-                        blob = await pdfResponse.blob();
-                    }
-
-                    if (blob.size < 100) throw new Error('File empty');
-
-                    const url = window.URL.createObjectURL(blob);
-
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.setAttribute('download', `Worksheet_${worksheet.topic.replace(/\s+/g, '_')}.pdf`);
-                    document.body.appendChild(link);
-                    link.click();
-
-                    // Cleanup
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
-                    toast.success('Download started!');
-                } catch (err) {
-                    console.error('Auto-download failed, falling back to direct link:', err);
-                    window.open(pdfUrl, '_blank');
-                    toast.warning('Auto-download failed. Opening PDF in new tab.');
-                }
-            } else {
-                console.error('PDF URL missing in response:', response.data);
-                toast.warning('PDF generated but URL is missing.');
-            }
-        } catch (error) {
-            toast.error('Failed to generate PDF');
-            console.error('PDF generation error:', error);
-        } finally {
-            setGeneratingPDF(false);
-        }
-    }, [worksheet, setCurrentWorksheet, navigate, getToken]);
-
-    // REMOVED AUTO-PDF GENERATION: User should explicitly choose when to generate PDF
-    // This respects the user's export format selection (DOCX vs PDF)
-    // Previously, this would auto-generate PDF even when user only wanted DOCX
-    /*
-    useEffect(() => {
-        if (!loading && worksheet && worksheet._id && !worksheet.pdfUrl && !generatingPDF && !autoGenTriggered) {
-            console.log('Auto-triggering PDF generation for:', worksheet._id);
-            setAutoGenTriggered(true);
-            handleGeneratePDF();
-        }
-    }, [worksheet, generatingPDF, autoGenTriggered, loading, handleGeneratePDF]);
-    */
 
     const handleRegenerateSection = async (section) => {
         if (!worksheet) return;
@@ -257,7 +150,6 @@ const WorksheetPreview = () => {
     const renderEditInput = (key) => {
         const content = editedContent[key];
 
-        // Special handling for Code object
         if (key === 'code' && typeof content === 'object' && content !== null) {
             return (
                 <div className="flex flex-col gap-3">
@@ -286,7 +178,6 @@ const WorksheetPreview = () => {
             );
         }
 
-        // Default string handling
         return (
             <textarea
                 className="input-field"
@@ -301,7 +192,6 @@ const WorksheetPreview = () => {
     const renderViewContent = (key) => {
         const content = worksheet.content[key];
 
-        // Special handling for Code object
         if (key === 'code' && typeof content === 'object' && content !== null) {
             return (
                 <div>
@@ -313,15 +203,18 @@ const WorksheetPreview = () => {
                                 padding: '1rem',
                                 borderRadius: '4px',
                                 overflowX: 'auto',
-                                fontFamily: 'monospace',
-                                border: '1px solid #ddd'
+                                fontFamily: "'Courier New', monospace",
+                                fontSize: '0.85rem',
+                                border: '1px solid #ddd',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word'
                             }}>
                                 {content.source}
                             </pre>
                         </div>
                     )}
                     {content.explanation && (
-                        <div className="mt-3 p-3 bg-blue-50 border border-blue-100 rounded">
+                        <div className="mt-3 p-3" style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '4px' }}>
                             <h4 className="text-sm font-bold mb-2">Explanation:</h4>
                             <div dangerouslySetInnerHTML={{ __html: content.explanation }} />
                         </div>
@@ -330,22 +223,37 @@ const WorksheetPreview = () => {
             );
         }
 
-        // Default string handling (Source code string or HTML string for other sections)
-        if (['questionTitle', 'aim', 'problemStatement', 'output', 'conclusion'].includes(key)) {
-            // Treat these as HTML safe
-            return <div dangerouslySetInnerHTML={{ __html: typeof content === 'string' ? content : '' }} />;
-        }
+        return <div dangerouslySetInnerHTML={{ __html: typeof content === 'string' ? content : JSON.stringify(content) }} />;
+    };
 
-        return (
-            <div style={{ whiteSpace: 'pre-wrap', fontFamily: key === 'code' ? 'monospace' : 'inherit' }}>
-                {typeof content === 'string' ? content : JSON.stringify(content)}
-            </div>
+    // Helper to get images for a section
+    const getSectionImages = (sectionLabel, sectionKey) => {
+        if (!worksheet.images) return [];
+        return worksheet.images.filter(img =>
+            img.section === sectionLabel ||
+            img.section?.toLowerCase() === sectionKey?.toLowerCase() ||
+            (sectionLabel === 'Output' && !img.section)
         );
     };
+
+    // Get images that don't match any standard section
+    const getOrphanImages = () => {
+        if (!worksheet.images) return [];
+        const sectionLabels = sections.map(s => s.label);
+        const sectionKeys = sections.map(s => s.key.toLowerCase());
+        return worksheet.images.filter(img => {
+            const s = img.section || '';
+            return !sectionLabels.includes(s) && !sectionKeys.includes(s.toLowerCase()) && s !== 'Output';
+        });
+    };
+
+    // Learning Outcomes data
+    const learningOutcomes = worksheet.content?.learningOutcome || [];
+
     return (
         <div className="worksheet-preview-container fade-in">
-            {/* Header / Nav */}
-            <div className="preview-header">
+            {/* Navigation Header - Hidden in Print */}
+            <div className="preview-header no-print">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => navigate('/dashboard')}
@@ -357,60 +265,123 @@ const WorksheetPreview = () => {
                     <div>
                         <h1 className="text-xl font-bold font-outfit text-primary">{worksheet.topic}</h1>
                         <p className="text-sm text-secondary">
-                            {worksheet.subject} • {worksheet.difficulty} • Version {worksheet.version}
+                            {worksheet.subject} • {worksheet.difficulty}
                         </p>
                     </div>
                 </div>
 
                 <div className="flex gap-2">
                     <button onClick={() => window.print()} className="btn btn-secondary btn-sm">
-                        <Printer size={16} /> Print
+                        <Printer size={16} /> Print View
                     </button>
                 </div>
             </div>
 
-            {/* Main Worksheet Paper */}
+            {/* Print-Only Recurring Header */}
+            {worksheet.headerImageUrl && (
+                <div className="print-header-fixed">
+                    <img
+                        src={worksheet.headerImageUrl}
+                        alt="University Header"
+                        style={{ maxHeight: '80px', width: '100%', objectFit: 'contain' }}
+                    />
+                </div>
+            )}
+
+            {/* ============ MAIN WORKSHEET PAPER ============ */}
             <div className="worksheet-paper">
-                {/* Header Image if exists */}
+
+                {/* 1. Header Image - FULL WIDTH */}
                 {worksheet.headerImageUrl && (
-                    <div className="mb-6 text-center border-b border-gray-200 pb-4">
+                    <div className="header-image-wrapper no-print">
                         <img
                             src={worksheet.headerImageUrl}
                             alt="University Header"
-                            style={{ maxHeight: '100px', objectFit: 'contain' }}
                         />
                     </div>
                 )}
 
-                <h1 className="worksheet-title">{worksheet.topic}</h1>
+                {/* 2. Worksheet Number */}
+                <div className="text-center mb-4">
+                    <h2 className="text-lg font-bold uppercase tracking-wide">
+                        Worksheet No - {worksheet.experimentNumber || ''}
+                    </h2>
+                </div>
 
-                {sections.map(({ key, label }) => (
-                    worksheet.content[key] && (
-                        <div key={key} className="section-block">
-                            <div className="flex justify-between items-end mb-2 border-b border-gray-200 pb-1">
-                                <h3 className="section-title">{label}</h3>
+                {/* 3. Student Details - Responsive Table */}
+                {user && (
+                    <table className="student-details-table">
+                        <tbody>
+                            <tr>
+                                <td style={{ width: '50%' }}>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Student Name:</span>
+                                        <span className="detail-value">{user.name}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Branch:</span>
+                                        <span className="detail-value">{user.branch || user.course}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Semester:</span>
+                                        <span className="detail-value">{user.semester}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Subject Name:</span>
+                                        <span className="detail-value">{worksheet.subject || user.defaultSubject}</span>
+                                    </div>
+                                </td>
+                                <td style={{ width: '50%' }}>
+                                    <div className="detail-row">
+                                        <span className="detail-label">UID:</span>
+                                        <span className="detail-value">{user.uid}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Section/Group:</span>
+                                        <span className="detail-value">{user.section}</span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Date:</span>
+                                        <span className="detail-value">
+                                            {worksheet.dateOfPerformance
+                                                ? new Date(worksheet.dateOfPerformance).toLocaleDateString()
+                                                : ''}
+                                        </span>
+                                    </div>
+                                    <div className="detail-row">
+                                        <span className="detail-label">Subject Code:</span>
+                                        <span className="detail-value">{worksheet.subjectCode || ''}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                )}
+
+                {/* 4. Worksheet Content Sections */}
+                {sections.map(({ key, label }) => {
+                    const content = worksheet.content[key];
+                    if (!content) return null;
+
+                    const isMainQuestion = key === 'questionTitle' || key === 'aim';
+
+                    return (
+                        <div key={key} className={`section-block page-break-avoid`}>
+                            <div className="flex justify-between items-end mb-1" style={{ borderBottom: '1px solid #888', paddingBottom: '2px' }}>
+                                <h3 className="section-title" style={{ borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>{label}</h3>
                                 <div className="no-print">
                                     {!editMode[key] ? (
-                                        <div className="flex gap-1 opacity-0 hover:opacity-100 transition-opacity">
-                                            <button
-                                                onClick={() => handleEdit(key)}
-                                                className="text-primary hover:text-primary-dark p-1"
-                                                title="Edit Section"
-                                            >
-                                                <Edit3 size={14} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleRegenerateSection(key)}
-                                                className="text-secondary hover:text-secondary-dark p-1"
-                                                title="Regenerate Section"
-                                            >
-                                                <RefreshCw size={14} />
-                                            </button>
-                                        </div>
+                                        <button
+                                            onClick={() => handleEdit(key)}
+                                            className="text-gray-400 hover:text-primary p-1 transition-colors"
+                                            title="Edit Section"
+                                        >
+                                            <Edit3 size={14} />
+                                        </button>
                                     ) : (
                                         <div className="flex gap-2">
-                                            <button onClick={() => handleSave(key)} className="text-success font-bold text-xs uppercase">Save</button>
-                                            <button onClick={() => handleCancel(key)} className="text-error font-bold text-xs uppercase">Cancel</button>
+                                            <button onClick={() => handleSave(key)} className="text-green-600 font-bold text-xs uppercase hover:underline">Save</button>
+                                            <button onClick={() => handleCancel(key)} className="text-red-500 font-bold text-xs uppercase hover:underline">Cancel</button>
                                         </div>
                                     )}
                                 </div>
@@ -419,27 +390,57 @@ const WorksheetPreview = () => {
                             {editMode[key] ? (
                                 renderEditInput(key)
                             ) : (
-                                <div className="section-content">
+                                <div className={`section-content ${isMainQuestion ? 'section-content-large' : ''}`}>
                                     {renderViewContent(key)}
                                 </div>
                             )}
-                        </div>
-                    )
-                ))}
 
-                {/* Images Section in Paper */}
-                {worksheet.images && worksheet.images.length > 0 && (
+                            {/* Images for this section */}
+                            {getSectionImages(label, key).length > 0 && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 page-break-avoid">
+                                    {getSectionImages(label, key).map((img, idx) => (
+                                        <div key={idx} style={{ border: '1px solid #e5e7eb', padding: '8px', textAlign: 'center' }}>
+                                            <img
+                                                src={img.url}
+                                                alt={img.caption}
+                                                style={{ maxWidth: '100%', height: 'auto', maxHeight: '240px', margin: '0 auto', objectFit: 'contain' }}
+                                            />
+                                            <p style={{ fontSize: '10pt', color: '#555', marginTop: '4px', fontStyle: 'italic', fontFamily: "'Times New Roman', serif" }}>
+                                                {img.caption}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {/* 5. Learning Outcomes (ALWAYS at the end) */}
+                {learningOutcomes.length > 0 && (
+                    <div className="learning-outcomes-section section-block page-break-avoid">
+                        <h3 className="section-title">Learning Outcomes</h3>
+                        <ul className="learning-outcomes-list">
+                            {learningOutcomes.map((outcome, idx) => (
+                                <li key={idx} dangerouslySetInnerHTML={{ __html: outcome }} />
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* 6. Orphan Images (if any remaining) */}
+                {getOrphanImages().length > 0 && (
                     <div className="section-block mt-8 break-before-page">
-                        <h3 className="section-title">Attached Figures</h3>
-                        <div className="grid grid-cols-2 gap-4 mt-4">
-                            {worksheet.images.map((img, idx) => (
-                                <div key={idx} className="border border-gray-200 p-2 rounded text-center">
+                        <h3 className="section-title">Additional Figures</h3>
+                        <div className="grid grid-cols-2 gap-6 mt-4">
+                            {getOrphanImages().map((img, idx) => (
+                                <div key={idx} style={{ border: '1px solid #ddd', padding: '8px', textAlign: 'center' }} className="page-break-avoid">
                                     <img
                                         src={img.url}
                                         alt={img.caption}
-                                        className="max-w-full h-auto max-h-60 mx-auto"
+                                        style={{ maxWidth: '100%', height: 'auto', maxHeight: '240px', margin: '0 auto', objectFit: 'contain' }}
                                     />
-                                    <p className="text-sm text-gray-600 mt-2 italic">
+                                    <p style={{ fontSize: '10pt', color: '#555', marginTop: '4px', fontStyle: 'italic' }}>
                                         Figure {idx + 1}: {img.caption}
                                     </p>
                                 </div>
@@ -449,80 +450,22 @@ const WorksheetPreview = () => {
                 )}
             </div>
 
-            {/* Floating Action Bar */}
-            <div className="action-bar">
+            {/* Floating Action Bar - Hidden in Print */}
+            <div className="action-bar no-print">
                 <button onClick={() => navigate('/history')} className="btn btn-secondary rounded-full">
                     <FileText size={18} />
                     History
                 </button>
 
-                {/* PDF Logic DISABLED - Replacing with DOCX Action */}
-                {/* 
-                {worksheet.pdfUrl ? (
-                    <>
-                        <a
-                            href={worksheet.pdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-primary rounded-full shadow-lg"
-                            download
-                        >
-                            <DownloadIcon size={18} />
-                            Download PDF
-                        </a>
-                        <button
-                            onClick={handleGeneratePDF}
-                            disabled={generatingPDF}
-                            className="btn btn-secondary rounded-full"
-                        >
-                            <RefreshCw size={18} />
-                        </button>
-                    </>
-                ) : (
-                    <button
-                        onClick={handleGeneratePDF}
-                        disabled={generatingPDF}
-                        className="btn btn-primary rounded-full shadow-lg px-6"
-                    >
-                        {generatingPDF ? <Loader size={18} className="spinner" /> : <DownloadIcon size={18} />}
-                        {generatingPDF ? ' Generating...' : ' Generate Final PDF'}
-                    </button>
-                )} 
-                */}
-
-                {/* New DOCX-Only Action */}
                 <button
-                    onClick={async () => {
-                        try {
-                            toast.info('Preparing download...');
-                            const token = await getToken();
-                            const response = await api.downloadWorksheetDocx(worksheet._id, token);
-
-                            // Create blob and download
-                            const url = window.URL.createObjectURL(new Blob([response.data]));
-                            const link = document.createElement('a');
-                            link.href = url;
-                            const fileName = `${worksheet.topic.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_worksheet.docx`;
-                            link.setAttribute('download', fileName);
-                            document.body.appendChild(link);
-                            link.click();
-                            link.remove();
-                            window.URL.revokeObjectURL(url);
-                            toast.success('Download started!');
-                        } catch (err) {
-                            console.error('Download failed', err);
-                            toast.error('Failed to download DOCX');
-                        }
-                    }}
-                    className="btn btn-primary rounded-full shadow-lg px-6"
-                    style={{ backgroundColor: '#2b579a', borderColor: '#2b579a' }} // Word Blue
+                    onClick={() => window.print()}
+                    className="btn btn-primary rounded-full shadow-lg px-8 flex items-center gap-2"
                 >
-                    <FileText size={18} />
-                    Download DOCX
+                    <Printer size={18} />
+                    Print / Save as PDF
                 </button>
             </div>
         </div>
-
     );
 };
 

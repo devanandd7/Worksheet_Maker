@@ -1,21 +1,25 @@
-/* Worksheet Preview Styles */
+/* =============================================
+   Worksheet Preview Styles - Clean Print Layout
+   ============================================= */
+
+/* Container */
 .worksheet-preview-container {
-    max-width: 900px;
+    max-width: 210mm;
     margin: 0 auto;
-    padding: 3rem var(--spacing-lg);
+    padding: 2rem 1rem;
 }
 
-/* Paper Effect for Content */
+/* Paper Effect */
 .worksheet-paper {
     background: white;
-    box-shadow: var(--shadow-xl);
-    border-radius: var(--radius-sm);
-    /* Smaller radius for document feel */
-    padding: 4rem;
-    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 40px;
+    min-height: 297mm;
     position: relative;
+    border: 1px solid #e5e7eb;
 }
 
+/* Top accent bar (screen only) */
 .worksheet-paper::before {
     content: '';
     position: absolute;
@@ -24,48 +28,144 @@
     right: 0;
     height: 4px;
     background: linear-gradient(90deg, var(--primary), var(--secondary));
-    border-top-left-radius: var(--radius-sm);
-    border-top-right-radius: var(--radius-sm);
 }
 
+/* Header Image - Full Width */
+.header-image-wrapper {
+    width: 100%;
+    text-align: center;
+    border-bottom: 2px solid #333;
+    padding-bottom: 8px;
+    margin-bottom: 1rem;
+}
+
+.header-image-wrapper img {
+    width: 100%;
+    max-height: 100px;
+    object-fit: contain;
+}
+
+/* Worksheet Title */
 .worksheet-title {
     font-family: 'Times New Roman', serif;
     text-align: center;
-    margin-bottom: 2rem;
-    font-size: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-transform: uppercase;
     border-bottom: 2px solid #000;
-    padding-bottom: 1rem;
+    padding-bottom: 0.5rem;
 }
 
+/* Student Details Table */
+.student-details-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-family: 'Times New Roman', serif;
+    font-size: 11pt;
+}
+
+.student-details-table td {
+    vertical-align: top;
+    padding: 3px 8px;
+}
+
+.detail-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+    font-size: 11pt;
+    line-height: 1.4;
+}
+
+.detail-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+    min-width: 120px;
+    flex-shrink: 0;
+    font-size: 10pt;
+}
+
+.detail-value {
+    word-break: break-word;
+}
+
+/* Section Block */
 .section-block {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .section-title {
+    font-family: 'Times New Roman', serif;
     font-weight: 700;
-    font-size: 1.1rem;
+    font-size: 13pt;
     text-transform: uppercase;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
     color: #000;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #888;
+    padding-bottom: 0.2rem;
 }
 
+/* Section Content */
 .section-content {
     font-family: 'Times New Roman', serif;
-    font-size: 1.05rem;
+    font-size: 12pt;
     line-height: 1.6;
     color: #000;
+    text-align: justify;
 }
 
-/* Code Block Styling */
+/* Bold/Large for Aim & Question */
+.section-content-large {
+    font-size: 13pt !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+}
+
+/* Learning Outcomes */
+.learning-outcomes-section {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 2px solid #333;
+}
+
+.learning-outcomes-section .section-title {
+    font-size: 14pt;
+    border-bottom: 2px solid #333;
+}
+
+.learning-outcomes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+    font-family: 'Times New Roman', serif;
+    font-size: 12pt;
+    line-height: 1.6;
+}
+
+.learning-outcomes-list li {
+    padding: 4px 0 4px 20px;
+    position: relative;
+}
+
+.learning-outcomes-list li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #333;
+    font-weight: bold;
+}
+
+/* Code Block */
 .code-block {
     background: #f4f4f5;
     border: 1px solid #e4e4e7;
     border-radius: 4px;
     padding: 1rem;
     font-family: 'Courier New', monospace;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     overflow-x: auto;
     color: #333;
 }
@@ -74,12 +174,12 @@
 .action-bar {
     position: sticky;
     bottom: 2rem;
-    background: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    padding: 1rem;
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--glass-border);
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
     display: flex;
     justify-content: center;
     gap: 1rem;
@@ -88,34 +188,160 @@
     margin: 0 auto;
 }
 
+/* Preview Header (nav) */
 .preview-header {
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-/* Print Styles */
-@media print {
+/* Helper Classes */
+.page-break-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
 
+.break-before-page {
+    break-before: page;
+    page-break-before: always;
+}
+
+/* Print-only fixed header */
+.print-header-fixed {
+    display: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .worksheet-preview-container {
+        padding: 0.5rem;
+    }
+
+    .worksheet-paper {
+        padding: 16px;
+        min-height: auto;
+    }
+
+    .student-details-table td {
+        display: block;
+        width: 100% !important;
+        padding: 0;
+    }
+
+    .student-details-table tr {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .detail-label {
+        min-width: 100px;
+        font-size: 9pt;
+    }
+
+    .section-title {
+        font-size: 11pt;
+    }
+
+    .section-content {
+        font-size: 11pt;
+    }
+
+    .action-bar {
+        bottom: 1rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* =================== PRINT STYLES =================== */
+@media print {
+    @page {
+        size: A4;
+        margin-top: 25mm !important;
+        margin-bottom: 15mm !important;
+        margin-left: 15mm !important;
+        margin-right: 15mm !important;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Fixed header for every page */
+    .print-header-fixed {
+        display: block !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 80px;
+        z-index: 1000;
+        background: white;
+        text-align: center;
+        border-bottom: 2px solid #ccc;
+        padding-bottom: 4px;
+    }
+
+    /* Hide non-print elements */
+    .no-print,
     .navbar,
     .action-bar,
-    .preview-header button {
+    .preview-header,
+    .toast-container,
+    footer,
+    .footer,
+    .copyright,
+    .watermark {
         display: none !important;
     }
 
+    /* Reset container */
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
     .worksheet-preview-container {
+        max-width: none;
+        width: 100%;
+        margin: 0;
         padding: 0;
-        max-width: 100%;
     }
 
     .worksheet-paper {
         box-shadow: none;
+        border: none;
         padding: 0;
         margin: 0;
+        min-height: auto;
     }
 
-    body {
-        background: white;
+    .worksheet-paper::before {
+        display: none;
+    }
+
+    /* Ensure black text */
+    .section-content,
+    .worksheet-title,
+    .section-title,
+    .student-details-table,
+    .learning-outcomes-list {
+        color: black !important;
+    }
+
+    /* Images */
+    img {
+        max-width: 100% !important;
+        page-break-inside: avoid;
+    }
+
+    /* Links */
+    a[href]:after {
+        content: none !important;
     }
 }
