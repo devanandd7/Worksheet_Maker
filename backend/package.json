@@ -9,6 +9,9 @@
     "dev": "nodemon --import ./loadEnv.js server.js",
     "test": "echo \"Testing setup pending\" && exit 0"
   },
+  "engines": {
+    "node": "20.x"
+  },
   "keywords": [
     "worksheet",
     "ai",
@@ -39,6 +42,6 @@
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {
-    "node": "v22.21.1"
+    "nodemon": "^3.0.3"
   }
 }
