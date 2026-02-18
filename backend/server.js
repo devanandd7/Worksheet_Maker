@@ -31,7 +31,13 @@ const limiter = rateLimit({
 
 // Security & Middleware
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",   // testing ke liye temporarily
+  })
+);
+
+
 app.use(limiter); // Apply rate limiting to all routes
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
